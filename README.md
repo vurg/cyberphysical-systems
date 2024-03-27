@@ -5,7 +5,9 @@
 To install our system, complete the following steps:
 
 1. Clone this repository into your preferred directory with ```git clone git@git.chalmers.se:courses/dit638/students/2024-group-21.git```
-2. 
+2. Run ```cd a5``` and open helloworld.cpp. Modify "LastName, FirstName" to your name.
+3. docker build -t CID/example:latest -f Dockerfile .
+4. docker run --rm CID/example:latest 42
 
 ## Adding New Features
 We will be following the basic git workflow and ensure usual code reviews.
