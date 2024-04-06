@@ -1,35 +1,63 @@
 # Code of Conduct
 
 ## How do we plan to collaborate?
-We will use GitLab for version control and issue-tracking.
 
-We plan to meet in-person at least two days per week:
-1. The first meeting will be for in-person work.
-2. The second meeting will be for in-person code review and learning.
-   - Each team member presents the code they've written, explaining key decisions and their thought process.
-
-We will also work remotely using Discord to collaborate.
+*   Use GitLab for version control and issue tracking to facilitate collaborative coding and project management.
+*   Conduct two mandatory in-person meetings weekly:
+    1.  The first meeting focuses on collaborative work and progress updates.
+    2.  The second meeting is dedicated to in-person code review and sharing learning experiences, where each team member explains their code, key decisions, and thought processes.
+*   Utilize Discord for remote collaboration, allowing team members to communicate efficiently and share updates or questions asynchronously.
 
 ## How do we ensure that everyone in our group stays informed about the individual contributions?
-Team members will be responsible for presenting their contributions during weekly meetings.
+
+*   Weekly meetings will include a segment for team members to present and discuss their individual contributions.
+*   Utilize GitLab's issue-tracking feature to document tasks, progress, and contributions, ensuring transparency and accountability.
 
 ## How do we ensure knowledge transfer among our team members?
-We will use pair programming and assign code reviews to the other team members. This will ensure that our whole team is familiar with all parts of the code.
+
+*   Implement pair programming and peer code reviews to ensure collective codebase familiarity.
+*   Organize bi-weekly knowledge-sharing sessions to discuss non-code related insights, including algorithm understanding, project management strategies, and tool usage experiences.
+*   Create a shared repository of resources and learnings in GitLab issues, including external documentation, tutorials, and articles, to allow traceability and others to learn from these external sources.
 
 ## What is our usual communication plan?
-Our usual communication is through Discord. Team members must inform others if they cannot attend planned meetings. Tasks will be assigned based on interest. Key learning points and decisions will be discussed during code review.
+
+*   Maintain constant communication through Discord for day-to-day interactions and updates.
+*   Team members must notify the group in advance if unable to attend scheduled meetings.
+*   Assign tasks based on interest and expertise, with decisions and key learning points shared during code reviews.
 
 ## How will we solve conflicts?
-We will discuss the conflict as a group, try to resolve it, and if we do not come to an agreement, we will approach the TA. When the team is divided, we will go with a majority vote. We will always prioritize the minimum-viable product (MVP) before increasing scope.
 
-## How do you plan to ensure responsible use of LLMs in your project and how do you transparently and traceably document the use of LLMs?  
-We will try to make sure to fully understand what has been generated, otherwise we will not try to incorporate it. We will label LLM generated code with comments.
-```
-//OLLAMA: description of use
-```
+*   **Assume that conflicts will happen:** Address conflicts directly within the group, seeking resolution through open discussion and consensus.
+    *   In case of unresolved issues, escalate to the teaching assistant (TA) for mediation.
+    *   Prioritize the project's minimum viable product (MVP) over scope expansion to focus efforts and reduce conflict potential.
+    *   In case of competing argumentsof which approach to solve a problem with, maintain respect and be kind to other, accept and own up to the result because this is a team project.
+*   **To reduce the risk of conflicts:** Establish clear roles and responsibilities ahead of deadlines, maintain open communication and check-in regularly to address concerns proactively with the group.
+    *   An example might be an upcoming deadline for WP20, where 2 group members volunteer to work on it. 1 member gets sick and informs the others. Another group member volunteers and replaces their role so that the work package can be completed on time. The missing member will do their best to take up more work later in the project.
 
-## Signed March 27, 2024
-- Nasit Vurgun
-- Daniel van den Heuvel
-- Kai Rowley
-- Sam Hardingham
+## How do you plan to ensure responsible use of LLMs in your project and how do you transparently and traceably document the use of LLMs?
+
+###   **LLM Use Policy**
+- **Use cases for LLM's in our project:**
+   - **to generate ideas**:
+Our policy here is to allow the use of LLM's to generate ideas and as a starting point for exploratory research. This is similar to how we would search Google to get started on finding solutions to some problem. This is meant to get the ball moving ...
+   - **to generate boilerplate code**:
+Our policy on LLM usage is generally that team members shall not use LLMs to generate any large sections of code in their entirety (nothing longer than 5-7 lines). Team members should follow the principle that LLMs should be used to explain concepts, not to generate work products. We will try to make sure to fully understand what has been generated, otherwise we will not try to incorporate it. We will label all LLM generated code with comments so that a log of all LLM generated code will be able to be maintained.
+    - **to speed up documentation and other repetitive tasks**: speeding up non-cerebral activities such as formatting of documentation to markdown falls outside of key learning objectives for this course, and should be permitted
+
+*   **Guidelines when using LLM's:**
+    *   Never trust the LLM. Be wary of hallucinations: 
+    
+    <img src = "https://i.imgur.com/8NQs3a6.png" width=300></img>
+    *   Ensure all team members are trained on assessing LLM output for accuracy and relevance.
+    *   Prohibit the use of LLMs for final decision-making without human oversight and consensus.
+    *   Avoid reliance on LLMs for critical system components or without thorough review and understanding.
+*   **Transparency and Traceability:**
+    *   Document LLM usage with specific annotations in code comments and GitLab commits, e.g., `// Generated by OLLAMA: brief description and purpose`.
+    *   Maintain a log in GitLab documenting instances of LLM use, including the purpose, output evaluation, and any modifications made.
+
+## Signed April 6th 2024
+
+*   Nasit Vurgun
+*   Daniel van den Heuvel
+*   Kai Rowley
+*   Sam Hardingham
