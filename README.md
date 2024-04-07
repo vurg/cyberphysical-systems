@@ -1,6 +1,9 @@
 # Group 21
 **DIT639 Project: Cyber Physical Systems and Systems of Systems**
 
+### Current Build Status
+[![pipeline status](https://git.chalmers.se/courses/dit638/students/2024-group-21/badges/main/pipeline.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/pipelines)
+
 ## Installation
 To install our system, complete the following steps:
 
