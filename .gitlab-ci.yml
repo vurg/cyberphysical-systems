@@ -50,6 +50,7 @@ release:
     - docker-build
   stage: deploy
   script:
+    - cd a5
     - docker build -f Dockerfile -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" .
     - docker push "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG"
   only:
