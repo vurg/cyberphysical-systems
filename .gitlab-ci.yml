@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Which Docker image shall be used on the GitLab runner?
-image: docker:latest
+image: docker:26.0.0
 
 # Details about how to connect to the Docker service to run this build.
 variables:
@@ -22,7 +22,7 @@ variables:
   DOCKER_TLS_CERTDIR: ""
 
 services:
-  - name: docker:latest-dind
+  - name: docker:26.0.0-dind
 
 stages:
   - build
