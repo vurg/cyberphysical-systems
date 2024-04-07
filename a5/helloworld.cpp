@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
         int number = std::stoi(argv[1]);
         PrimeChecker pc;
         // Update current name
-        std::cout << "Rowley, Kai" << number << " is a prime number? " << pc.isPrime(number*2) << std::endl;
+        std::cout << "Rowley, Kai" << number << " is a prime number? " << pc.isPrime(number) << std::endl;
     }
     return 0; // returns 0, indicating program completion
 }
