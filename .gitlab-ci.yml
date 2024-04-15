@@ -40,7 +40,13 @@ build-and-test:
   stage: build
   script:
     - cd a5
-    - docker build -f Dockerfile .
+    - docker build -t primechecker -f Dockerfile .
+    - docker run --name test-container primechecker
+    - docker cp test-container:/opt/coverage.info ./coverage.info
+    - docker rm test-container
+  artifacts:
+    paths:
+      - ./coverage.info
   except:
     - tags  # This prevents the build-and-test job from running on new tags
 
