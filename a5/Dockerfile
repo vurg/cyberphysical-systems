@@ -40,15 +40,16 @@ RUN cp /opt/sources/build/coverage.info /opt/sources/coverage.info
 RUN ls -l
 
 WORKDIR /opt/sources
-RUN ls -l
 RUN mkdir -p out && chmod 777 out
-RUN lcov --list coverage.info
-RUN set -e; \
-    genhtml /opt/sources/coverage.info --output-directory /opt/sources/out &> genhtml.log 2>&1; \
-    echo "GenHTML Exit Status: $?" ; \
-    cat genhtml.log; \
-    ls -l; \
-    ls -la out
+RUN lcov --list /opt/sources/coverage.info
+RUN genhtml --version
+RUN ls -l;
+RUN ls -la out
+RUN genhtml /opt/sources/coverage.info --output-directory /opt/sources/out &> genhtml.log 2>&1;
+RUN echo "GenHTML Exit Status: $?" ;
+RUN cat genhtml.log;
+RUN ls -l;
+RUN ls -la out
 
 ###################################################
 # Section 2: Bundle the application.
