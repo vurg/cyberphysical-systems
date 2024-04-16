@@ -43,11 +43,13 @@ WORKDIR /opt/sources
 RUN mkdir -p out && chmod 777 out
 RUN lcov --list /opt/sources/coverage.info
 RUN genhtml --version
+RUN cat /opt/sources/coverage.info
 RUN ls -l;
 RUN ls -la out
-RUN genhtml /opt/sources/coverage.info --output-directory /opt/sources/out &> genhtml.log 2>&1;
+RUN genhtml /opt/sources/coverage.info --output-directory /opt/sources/out > genhtml.stdout 2> genhtml.stderr || cat genhtml.log;
 RUN echo "GenHTML Exit Status: $?" ;
-RUN cat genhtml.log;
+RUN cat genhtml.log
+RUN cat genhtml.stderr
 RUN ls -l;
 RUN ls -la out
 
