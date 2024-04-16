@@ -3,7 +3,7 @@
 FROM registry.git.chalmers.se/courses/dit638/students/2024-group-21/ubuntu:22.04 as builder
 MAINTAINER Christian Berger christian.berger@gu.se
 
-RUN apt-get update -y && \
+RUN apt-get update -y --allow-unauthenticated && \
     apt-get upgrade -y && \
     apt-get dist-upgrade -y
 
@@ -37,7 +37,7 @@ FROM registry.git.chalmers.se/courses/dit638/students/2024-group-21/ubuntu:22.04
 MAINTAINER Christian Berger christian.berger@gu.se
 
 
-RUN apt-get update -y && \
+RUN apt-get update -y --allow-unauthenticated && \
     apt-get upgrade -y && \
     apt-get dist-upgrade -y
 
