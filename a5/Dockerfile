@@ -38,8 +38,8 @@ RUN lcov --directory . --capture --output-file coverage.info
 RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
 RUN ls -l
 
-WORKDIR /opt
-COPY --from=builder /opt/sources/build/coverage.info /opt/coverage.info
+WORKDIR /opt/sources
+COPY --from=builder /opt/sources/build/coverage.info /opt/sources/coverage.info
 RUN ls -l
 RUN mkdir -p out && chmod 777 out
 RUN set -e; \
@@ -59,7 +59,7 @@ RUN apt-get update -y --allow-unauthenticated && \
     apt-get dist-upgrade -y
 
 COPY --from=builder /opt/out /opt/out
-COPY --from=builder /opt/coverage.info /opt/coverage.info
+COPY --from=builder /opt/sources/coverage.info /opt/coverage.info
 COPY --from=builder /tmp/helloworld /opt/helloworld
 
 # Adds entrypoint script
