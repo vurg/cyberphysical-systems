@@ -34,11 +34,14 @@ RUN cd /opt/sources && \
 
 # Runs tests, generates coverage report
 WORKDIR /opt/sources/build
-RUN lcov --directory . --capture --no-external --output-file coverage.info
+RUN lcov --directory . --capture --output-file coverage.info
 RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+
+WORKDIR /opt
+COPY --from=builder /opt/sources/build/coverage.info /opt/coverage.info
 RUN ls -l
+RUN mkdir -p out && chmod 777 out
 RUN set -e; \
-    mkdir -p out && chmod 777 out; \
     genhtml --debug coverage.info --output-directory out &> genhtml.log 2>&1; \
     echo "GenHTML Exit Status: $?" ; \
     cat genhtml.log; \
@@ -54,7 +57,8 @@ RUN apt-get update -y --allow-unauthenticated && \
     apt-get upgrade -y && \
     apt-get dist-upgrade -y
 
-COPY --from=builder /opt/sources/build/coverage.info /opt/coverage.info
+COPY --from=builder /opt/out /opt/out
+COPY --from=builder /opt/coverage.info /opt/coverage.info
 COPY --from=builder /tmp/helloworld /opt/helloworld
 
 # Adds entrypoint script
