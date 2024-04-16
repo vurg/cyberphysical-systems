@@ -48,6 +48,7 @@ build-and-test:
     - docker exec test-container ls -l /opt
     - docker exec test-container ls -l /opt/sources/build
     - docker cp test-container:/opt/coverage.info $CI_PROJECT_DIR/coverage.info
+    - docker cp test-container:/opt/sources/out $CI_PROJECT_DIR/out
     - ls -l $CI_PROJECT_DIR
     - docker stop test-container
     - docker rm test-container
@@ -55,6 +56,7 @@ build-and-test:
   artifacts:
     paths:
       - coverage.info
+      - out/
   except:
     - tags  # This prevents the build-and-test job from running on new tags
 
@@ -70,3 +72,18 @@ release:
   only:
     - tags
     - /^v\d+\.\d+\.\d+(-rc\.\d+)?(-[a-zA-Z]+(\d+)?)?$/  # This regex matches semantic versioning
+
+  # New job for publishing coverage reports
+  pages:
+    tags:
+      - docker-build
+    stage: deploy
+    dependencies:
+      - build-and-test
+    script:
+      - mv out public
+    artifacts:
+      paths:
+        - public
+    only:
+      - main
