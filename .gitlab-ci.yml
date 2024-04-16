@@ -44,10 +44,9 @@ build-and-test:
   script:
     - cd a5
     - docker build -t primechecker -f Dockerfile .
-    - docker run -d --name test-container primechecker tail -f /dev/null
-    - docker exec test-container /opt/helloworld 10
+    - docker run -d --name test-container primechecker 10
+    - docker exec test-container ls /opt
     - docker cp test-container:/opt/coverage.info ./coverage.info
-    - docker stop test-container
     - docker rm test-container
   artifacts:
     paths:
