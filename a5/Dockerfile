@@ -3,10 +3,6 @@
 FROM registry.git.chalmers.se/courses/dit638/students/2024-group-21/ubuntu:22.04 as builder
 MAINTAINER Christian Berger christian.berger@gu.se
 
-# Adds missing GPG key
-RUN apt-get install gnupg
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 871920D1991BC93C
-
 RUN apt-get update -y --allow-unauthenticated && \
     apt-get upgrade -y && \
     apt-get dist-upgrade -y
@@ -39,7 +35,6 @@ RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter sy
 # Section 2: Bundle the application.
 FROM registry.git.chalmers.se/courses/dit638/students/2024-group-21/ubuntu:22.04
 MAINTAINER Christian Berger christian.berger@gu.se
-
 
 RUN apt-get update -y --allow-unauthenticated && \
     apt-get upgrade -y && \
