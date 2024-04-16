@@ -49,7 +49,7 @@ build-and-test:
     - docker exec test-container ls -l /opt
     - docker exec test-container ls -l /opt/sources/build
     - docker cp test-container:/opt/coverage.info $CI_PROJECT_DIR/coverage.info
-    - docker cp test-container:/opt/sources/out $CI_PROJECT_DIR/out
+    - docker cp test-container:/opt/out $CI_PROJECT_DIR/out
     - ls -l $CI_PROJECT_DIR
     - docker stop test-container
     - docker rm test-container
