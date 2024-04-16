@@ -36,10 +36,10 @@ RUN cd /opt/sources && \
 WORKDIR /opt/sources/build
 RUN lcov --directory . --capture --output-file coverage.info
 RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+RUN cp /opt/sources/build/coverage.info /opt/sources/coverage.info
 RUN ls -l
 
 WORKDIR /opt/sources
-COPY --from=builder /opt/sources/build/coverage.info /opt/sources/coverage.info
 RUN ls -l
 RUN mkdir -p out && chmod 777 out
 RUN set -e; \
