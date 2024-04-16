@@ -30,6 +30,7 @@ services:
 stages:
   - build
   - deploy
+  - publish
 
 # Display information before we start the build.
 before_script:
@@ -77,7 +78,7 @@ release:
   pages:
     tags:
       - docker-build
-    stage: deploy
+    stage: publish
     dependencies:
       - build-and-test
     script:
