@@ -73,19 +73,3 @@ release:
   only:
     - tags
     - /^v\d+\.\d+\.\d+(-rc\.\d+)?(-[a-zA-Z]+(\d+)?)?$/  # This regex matches semantic versioning
-
-# New job for publishing coverage reports
-pages:
-  tags:
-    - docker-build
-  stage: publish
-  dependencies:
-    - build-and-test
-  script:
-    - mkdir public
-    - cp -r out/* public/
-  artifacts:
-    paths:
-      - public
-  only:
-    - main
