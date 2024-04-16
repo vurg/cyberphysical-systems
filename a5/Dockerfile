@@ -37,15 +37,10 @@ WORKDIR /opt/sources/build
 RUN lcov --directory . --capture --output-file coverage.info --rc geninfo_adjust_src_path="/opt/sources/ => "
 RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
 RUN cp /opt/sources/build/coverage.info /opt/sources/coverage.info
-RUN ls -l
 
 WORKDIR /opt/sources
 RUN mkdir -p out && chmod 777 out
 RUN lcov --list /opt/sources/coverage.info
-RUN genhtml --version
-RUN cat /opt/sources/coverage.info
-RUN ls -l;
-RUN ls -la out
 RUN genhtml /opt/sources/coverage.info --output-directory /opt/sources/out > genhtml.stdout 2> genhtml.stderr || cat genhtml.log;
 RUN echo "GenHTML Exit Status: $?" ;
 RUN cat genhtml.stdout
