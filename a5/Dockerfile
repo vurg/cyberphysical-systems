@@ -5,6 +5,7 @@ MAINTAINER Christian Berger christian.berger@gu.se
 
 # Environment variable set to avoid the ci/cd pipeline getting stuck on interactive prompts
 ENV TZ=Europe/Stockholm
+ENV DEBIAN_FRONTEND=noninteractive # specifies non-interaction to stop the pipeline environment getting stuck
 
 RUN apt-get update -y --allow-unauthenticated && \
     apt-get upgrade -y && \
