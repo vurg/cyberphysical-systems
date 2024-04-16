@@ -31,7 +31,7 @@ WORKDIR /opt/sources/build
 RUN lcov --directory . --capture --output-file coverage.info
 RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
 
-##################################################
+###################################################
 # Section 2: Bundle the application.
 FROM registry.git.chalmers.se/courses/dit638/students/2024-group-21/ubuntu:22.04
 MAINTAINER Christian Berger christian.berger@gu.se
