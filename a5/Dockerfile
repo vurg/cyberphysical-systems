@@ -40,6 +40,7 @@ RUN ls -l
 RUN set -e; \
     mkdir -p out; \
     genhtml coverage.info --output-directory out &> genhtml.log; \
+    echo "GenHTML Exit Status: $?" ; \
     cat genhtml.log; \
     ls -l; \
     ls -la out
