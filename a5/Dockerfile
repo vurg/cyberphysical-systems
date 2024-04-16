@@ -34,7 +34,7 @@ RUN cd /opt/sources && \
 
 # Runs tests, generates coverage report
 WORKDIR /opt/sources/build
-RUN lcov --directory . --capture --output-file coverage.info
+RUN lcov --directory . --capture --no-external --output-file coverage.info
 RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
 RUN ls -l
 RUN set -e; \
