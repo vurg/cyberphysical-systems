@@ -22,8 +22,9 @@ RUN apt-get install -y --no-install-recommends \
 ADD . /opt/sources
 WORKDIR /opt/sources
 
-# Tag for test coverage
+# Tags for test coverage
 ENV CXXFLAGS="--coverage"
+ENV LDFLAGS="--coverage"
 
 RUN cd /opt/sources && \
     mkdir build && \
@@ -35,6 +36,7 @@ RUN cd /opt/sources && \
 WORKDIR /opt/sources/build
 RUN lcov --directory . --capture --output-file coverage.info
 RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+RUN genhtml coverage.info --output-directory out
 
 ###################################################
 # Section 2: Bundle the application.
