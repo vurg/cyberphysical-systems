@@ -1,6 +1,6 @@
 ##################################################
 # Section 1: Build the application
-FROM ubuntu:22.04 as builder
+FROM registry.git.chalmers.se/2024-group-21/ubuntu:22.04 as builder
 MAINTAINER Christian Berger christian.berger@gu.se
 
 RUN apt-get update -y && \
@@ -33,7 +33,7 @@ RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter sy
 
 ##################################################
 # Section 2: Bundle the application.
-FROM ubuntu:22.04
+FROM registry.git.chalmers.se/2024-group-21/ubuntu:22.04
 MAINTAINER Christian Berger christian.berger@gu.se
 
 RUN apt-get update -y && \
