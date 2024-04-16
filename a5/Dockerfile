@@ -46,6 +46,11 @@ RUN apt-get update -y --allow-unauthenticated && \
     apt-get dist-upgrade -y
 
 COPY --from=builder /opt/sources/build/coverage.info /opt/coverage.info
+COPY --from=builder /tmp/helloworld /opt/helloworld
+
+# Adds entrypoint script
+COPY entrypoint.sh /opt/entrypoint.sh
+RUN chmod +x /opt/entrypoint.sh
+
 WORKDIR /opt
-COPY --from=builder /tmp/helloworld .
-ENTRYPOINT ["/opt/helloworld"]
+ENTRYPOINT ["/opt/entrypoint.sh"]
