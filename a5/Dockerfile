@@ -59,7 +59,6 @@ RUN apt-get update -y --allow-unauthenticated && \
     apt-get upgrade -y && \
     apt-get dist-upgrade -y
 
-COPY --from=builder /opt/out /opt/out
 COPY --from=builder /opt/sources/coverage.info /opt/coverage.info
 COPY --from=builder /tmp/helloworld /opt/helloworld
 
