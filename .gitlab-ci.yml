@@ -46,10 +46,11 @@ build-and-test:
     - docker build -t primechecker -f Dockerfile .
     - docker run -d --name test-container primechecker
     - docker exec test-container ls -l /opt
-    - docker cp test-container:/opt/coverage.info coverage.info
+    - docker cp test-container:/opt/coverage.info $CI_PROJECT_DIR/coverage.info
+    - ls -l $CI_PROJECT_DIR
     - docker stop test-container
     - docker rm test-container
-    - ls -l
+    - ls -l $CI_PROJECT_DIR
   artifacts:
     paths:
       - coverage.info
