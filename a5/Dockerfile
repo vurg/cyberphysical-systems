@@ -36,6 +36,7 @@ RUN cd /opt/sources && \
 WORKDIR /opt/sources/build
 RUN lcov --directory . --capture --output-file coverage.info
 RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter system-files
+RUN ls -l
 RUN set -e; \
     mkdir -p out; \
     genhtml coverage.info --output-directory out &> genhtml.log; \
