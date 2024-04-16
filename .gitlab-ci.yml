@@ -82,7 +82,8 @@ pages:
   dependencies:
     - build-and-test
   script:
-    - mv out public
+    - mkdir public
+    - cp -r out/* public/
   artifacts:
     paths:
       - public
