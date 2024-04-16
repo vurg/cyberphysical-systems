@@ -39,7 +39,7 @@ RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter sy
 RUN ls -l
 RUN set -e; \
     mkdir -p out && chmod 777 out; \
-    genhtml --debug coverage.info --output-directory out &> genhtml.log; \
+    genhtml --debug coverage.info --output-directory out &> genhtml.log 2>&1; \
     echo "GenHTML Exit Status: $?" ; \
     cat genhtml.log; \
     ls -l; \
