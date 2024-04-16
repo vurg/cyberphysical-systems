@@ -48,7 +48,7 @@ RUN ls -l;
 RUN ls -la out
 RUN genhtml /opt/sources/coverage.info --output-directory /opt/sources/out > genhtml.stdout 2> genhtml.stderr || cat genhtml.log;
 RUN echo "GenHTML Exit Status: $?" ;
-RUN cat genhtml.log
+RUN cat genhtml.stdout
 RUN cat genhtml.stderr
 RUN ls -l;
 RUN ls -la out
