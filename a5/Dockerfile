@@ -4,8 +4,9 @@ FROM registry.git.chalmers.se/courses/dit638/students/2024-group-21/ubuntu:22.04
 MAINTAINER Christian Berger christian.berger@gu.se
 
 # Adds missing GPG keys
-RUN apt-get update && apt-get install -y gnupg && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 871920D1991BC93C
+RUN apt-get update && apt-get install -y gnupg
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 871920D1991BC93C
+RUN apt-get update
 
 RUN apt-get update -y && \
     apt-get upgrade -y && \
@@ -41,8 +42,9 @@ FROM registry.git.chalmers.se/courses/dit638/students/2024-group-21/ubuntu:22.04
 MAINTAINER Christian Berger christian.berger@gu.se
 
 # Adds missing GPG keys
-RUN apt-get update && apt-get install -y gnupg && \
-    apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 871920D1991BC93C
+RUN apt-get update && apt-get install -y gnupg
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 871920D1991BC93C
+RUN apt-get update
 
 RUN apt-get update -y && \
     apt-get upgrade -y && \
