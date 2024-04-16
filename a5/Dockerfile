@@ -39,6 +39,7 @@ RUN lcov --remove coverage.info '/usr/*' --output-file coverage.info # filter sy
 RUN set -e; \
     mkdir -p out; \
     genhtml coverage.info --output-directory out &> genhtml.log; \
+    cat genhtml.log; \
     ls -la out
 
 ###################################################
