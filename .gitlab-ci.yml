@@ -45,10 +45,11 @@ build-and-test:
     - cd a5
     - docker build -t primechecker -f Dockerfile .
     - docker run -d --name test-container primechecker
-    - docker exec test-container ls /opt
-    - docker cp test-container:/opt/coverage.info ./coverage.info
+    - docker exec test-container ls -l /opt
+    - docker cp test-container:/opt/coverage.info ./
     - docker stop test-container
     - docker rm test-container
+    - ls -l
   artifacts:
     paths:
       - ./coverage.info
