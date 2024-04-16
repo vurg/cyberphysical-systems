@@ -45,15 +45,15 @@ build-and-test:
     - cd a5
     - docker build -t primechecker -f Dockerfile .
     - docker run -d --name test-container primechecker
-    - docker exec test-container ls -l /opt/sources/build/out
-    - docker cp test-container:/opt/sources/build/out ./coverage-report
+    - docker exec test-container ls -l /opt
+    - docker cp test-container:/opt/coverage.info $CI_PROJECT_DIR/coverage.info
     - ls -l $CI_PROJECT_DIR
     - docker stop test-container
     - docker rm test-container
     - ls -l $CI_PROJECT_DIR
   artifacts:
     paths:
-      - coverage-report/
+      - coverage.info
   except:
     - tags  # This prevents the build-and-test job from running on new tags
 
