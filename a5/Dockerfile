@@ -42,7 +42,7 @@ RUN ls -l
 WORKDIR /opt/sources
 RUN ls -l
 RUN mkdir -p out && chmod 777 out
-lcov --list coverage.info
+RUN lcov --list coverage.info
 RUN set -e; \
     genhtml --debug coverage.info --output-directory out &> genhtml.log 2>&1; \
     echo "GenHTML Exit Status: $?" ; \
