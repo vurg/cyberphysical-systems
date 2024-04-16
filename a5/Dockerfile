@@ -3,6 +3,9 @@
 FROM registry.git.chalmers.se/courses/dit638/students/2024-group-21/ubuntu:20.04 as builder
 MAINTAINER Christian Berger christian.berger@gu.se
 
+# Environment variable set to avoid the ci/cd pipeline getting stuck on interactive prompts
+ENV TZ=Europe/Stockholm
+
 RUN apt-get update -y --allow-unauthenticated && \
     apt-get upgrade -y && \
     apt-get dist-upgrade -y
