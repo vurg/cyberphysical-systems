@@ -44,7 +44,7 @@ RUN ls -l
 RUN mkdir -p out && chmod 777 out
 RUN lcov --list coverage.info
 RUN set -e; \
-    genhtml coverage.info --output-directory out &> genhtml.log 2>&1; \
+    genhtml /opt/sources/coverage.info --output-directory /opt/sources/out &> genhtml.log 2>&1; \
     echo "GenHTML Exit Status: $?" ; \
     cat genhtml.log; \
     ls -l; \
