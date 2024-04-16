@@ -43,16 +43,17 @@ build-and-test:
   stage: build
   script:
     - cd a5
+    - export CI_PROJECT_DIR=$(pwd)
     - docker build -t primechecker -f Dockerfile .
     - docker run -d --name test-container primechecker
     - docker exec test-container ls -l /opt
-    - docker cp test-container:/opt/coverage.info ./
+    - docker cp test-container:/opt/coverage.info $CI_PROJECT_DIR/coverage.info
     - docker stop test-container
     - docker rm test-container
     - ls -l
   artifacts:
     paths:
-      - ./coverage.info
+      - $CI_PROJECT_DIR/coverage.info
   except:
     - tags  # This prevents the build-and-test job from running on new tags
 
