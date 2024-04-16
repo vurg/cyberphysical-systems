@@ -41,6 +41,7 @@ RUN set -e; \
     mkdir -p out; \
     genhtml coverage.info --output-directory out &> genhtml.log; \
     cat genhtml.log; \
+    ls -l; \
     ls -la out
 
 ###################################################
