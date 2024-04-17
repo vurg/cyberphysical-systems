@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Which Docker image shall be used on the GitLab runner?
-image: docker:26.0.0
+image: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3
 
 # Details about how to connect to the Docker service to run this build.
 variables:
@@ -22,16 +22,18 @@ variables:
   DOCKER_TLS_CERTDIR: ""
 
 services:
-  - name: docker:26.0.0-dind
+  - name: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3-dind
+    alias: docker
 
 stages:
   - build
   - deploy
+  - publish
 
 # Display information before we start the build.
 before_script:
   - docker info
-  - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
 
 # This section describes what shall be done to build and test the project.
 build-and-test:
@@ -40,7 +42,16 @@ build-and-test:
   stage: build
   script:
     - cd a5
-    - docker build -f Dockerfile .
+    - docker build -t primechecker -f Dockerfile .
+    - docker run -d --name test-container primechecker
+    - docker cp test-container:/opt/coverage.info $CI_PROJECT_DIR/coverage.info
+    - docker cp test-container:/opt/out $CI_PROJECT_DIR/out
+    - docker stop test-container
+    - docker rm test-container
+  artifacts:
+    paths:
+      - coverage.info
+      - out/
   except:
     - tags  # This prevents the build-and-test job from running on new tags
 
