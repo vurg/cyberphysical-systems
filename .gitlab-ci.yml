@@ -19,7 +19,10 @@ image: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3
 # Details about how to connect to the Docker service to run this build.
 variables:
   DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: ""
+  CI_BUILDX_ARCHS: "linux/amd64,linux/arm64,linux/arm/v7"
+  BUILDX_URL: https://github.com/docker/buildx/releases/download/v0.3.1/buildx-v0.3.1.linux-amd64
 
 services:
   - name: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3-dind
@@ -60,17 +63,18 @@ release:
   tags:
     - docker-build
   stage: deploy
-  script:
-    - export PATH=/usr/bin:$PATH
-    - mkdir -p ~/.docker/cli-plugins/
-    - wget -O ~/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v0.3.1/buildx-v0.3.1.linux-amd64
+  before_script:
+    - mkdir -p ~/.docker/cli-plugins
+    - wget -O ~/.docker/cli-plugins/docker-buildx $BUILDX_URL
     - chmod 755 ~/.docker/cli-plugins/docker-buildx
     - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-    - docker login -u gitlab-ci-token -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
     - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx create --name platformbuilder --use
     - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx inspect --bootstrap
+    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx ls df -h
+    - docker login -u gitlab-ci-token -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
+  script:
     - cd a5
-    - docker buildx build --push --platform "linux/amd64,linux/arm/v7" -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" .
+    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform $CI_BUILDX_ARCHS -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" --push .
   only:
     - tags
     - /^v\d+\.\d+\.\d+(-rc\.\d+)?(-[a-zA-Z]+(\d+)?)?$/  # This regex matches semantic versioning
