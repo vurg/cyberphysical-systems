@@ -70,17 +70,15 @@ release:
     - docker-build
   stage: deploy
   script:
-    - mkdir -p $HOME/.docker/cli-plugins/
-    - wget -O $HOME/.docker/cli-plugins/docker-buildx $BUILDX_URL
-    - chmod a+x $HOME/.docker/cli-plugins/docker-buildx
+    - mkdir -p ~/.docker/cli-plugins/
+    - wget -O ~/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v0.3.1/buildx-v0.3.1.linux-amd64
+    - chmod 755 ~/.docker/cli-plugins/docker-buildx
     - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx create --use --driver docker-container --name ${BUILDX_BUILDER} --platform=${BUILDX_PLATFORM}
-    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx inspect --bootstrap ${BUILDX_BUILDER}
-    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx ls
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - docker login -u gitlab-ci-token -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
+    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx create --name platformbuilder --use
+    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx inspect --bootstrap
     - cd a5
-    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform "linux/amd64,linux/arm64,linux/arm/v7" -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" -o type=local,dest=export .
-    - docker push "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG"
+    - docker buildx build --push --platform "linux/amd64,linux/arm/v7" -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" .
   only:
     - tags
     - /^v\d+\.\d+\.\d+(-rc\.\d+)?(-[a-zA-Z]+(\d+)?)?$/  # This regex matches semantic versioning
