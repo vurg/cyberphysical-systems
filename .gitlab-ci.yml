@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Which Docker image shall be used on the GitLab runner?
-image: registry.git.chalmers.se/courses/dit638/students/docker/docker:23.0.4
+image: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3
 
 # Details about how to connect to the Docker service to run this build.
 variables:
@@ -22,7 +22,7 @@ variables:
   DOCKER_TLS_CERTDIR: ""
 
 services:
-  - name: registry.git.chalmers.se/courses/dit638/students/docker/docker:23.0.4-dind
+  - name: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3-dind
     alias: docker
     command: ["--experimental"]
 
@@ -69,6 +69,7 @@ release:
     - wget https://github.com/docker/buildx/releases/download/v0.7.1/buildx-v0.7.1.linux-amd64
     - mv buildx-v0.7.1.linux-amd64 docker-buildx
     - chmod 755 docker-buildx
+    - docker pull registry.git.chalmers.se/courses/dit638/students/docker/qemu-user-static
     - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
     - docker buildx
     - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx create --name platformbuilder --use
