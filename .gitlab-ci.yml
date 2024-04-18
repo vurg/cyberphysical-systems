@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Which Docker image shall be used on the GitLab runner?
-image: registry.git.chalmers.se/courses/dit638/students/docker/docker:26.0.1
+image: registry.git.chalmers.se/courses/dit638/students/docker/docker:23.0.4
 
 # Details about how to connect to the Docker service to run this build.
 variables:
@@ -22,7 +22,7 @@ variables:
   DOCKER_TLS_CERTDIR: ""
 
 services:
-  - name: registry.git.chalmers.se/courses/dit638/students/docker/docker:26.0.1-dind
+  - name: registry.git.chalmers.se/courses/dit638/students/docker/docker:23.0.4-dind
     alias: docker
     command: ["--experimental"]
 
