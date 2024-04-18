@@ -20,19 +20,10 @@ image: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3
 variables:
   DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
-  DOCKER_DRIVER: overlay2
-  DOCKER_BUILDKIT: 1
-  DOCKER_CLI_EXPERIMENTAL: enabled
-  BUILDX_URL: https://github.com/docker/buildx/releases/download/v0.14.0/buildx-v0.14.0.linux-amd64
-  BUILDX_BUILDER: platformbuilder
-  BUILDX_PLATFORM: linux/amd64,linux/arm64,linux/arm/v7
-  #TEST_CMD: <some command to run on your image to (smoke-)test whether all is good>
-  #IMAGE: registry.gitlab.com/<path to your image>
 
 services:
   - name: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3-dind
     alias: docker
-    command: ["--experimental"]
 
 stages:
   - build
