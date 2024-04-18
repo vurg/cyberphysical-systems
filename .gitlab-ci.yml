@@ -20,6 +20,14 @@ image: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3
 variables:
   DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
+  DOCKER_BUILDKIT: 1
+  DOCKER_CLI_EXPERIMENTAL: enabled
+  BUILDX_URL: https://github.com/docker/buildx/releases/download/v0.14.0/buildx-v0.14.0.linux-amd64
+  BUILDX_BUILDER: platformbuilder
+  BUILDX_PLATFORM: linux/amd64,linux/arm64,linux/arm/v7
+  #TEST_CMD: <some command to run on your image to (smoke-)test whether all is good>
+  #IMAGE: registry.gitlab.com/<path to your image>
 
 services:
   - name: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3-dind
@@ -62,20 +70,16 @@ release:
     - docker-build
   stage: deploy
   script:
-    - cd a5
-    - docker build -f Dockerfile -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" .
-    - mkdir -p ~/.docker/cli-plugins
-    - cd ~/.docker/cli-plugins/
-    - wget https://github.com/docker/buildx/releases/download/v0.14.0/buildx-v0.14.0.linux-amd64
-    - mv buildx-v0.14.0.linux-amd64 docker-buildx
-    - chmod 755 docker-buildx
+    - mkdir -p $HOME/.docker/cli-plugins/
+    - wget -O $HOME/.docker/cli-plugins/docker-buildx $BUILDX_URL
+    - chmod a+x $HOME/.docker/cli-plugins/docker-buildx
     - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx create --name platformbuilder --use
-    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx inspect --bootstrap
+    - docker buildx create --use --driver docker-container --name ${BUILDX_BUILDER} --platform=${BUILDX_PLATFORM}
+    - docker buildx inspect --bootstrap ${BUILDX_BUILDER}
     - docker buildx ls
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform "linux/amd64,linux/arm64,linux/arm/v7" -t primechecker -o type=local,dest=export .
-    - docker buildx build --platform "linux/amd64,linux/arm64,linux/arm/v7" -t primechecker -o type=local,dest=export .
+    - cd a5
+    - docker buildx build --platform "linux/amd64,linux/arm64,linux/arm/v7" -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" -o type=local,dest=export .
     - docker push "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG"
   only:
     - tags
