@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Which Docker image shall be used on the GitLab runner?
-image: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3
+image: docker:26.0.1
 
 # Details about how to connect to the Docker service to run this build.
 variables:
@@ -25,7 +25,7 @@ variables:
   BUILDX_URL: https://github.com/docker/buildx/releases/download/v0.3.1/buildx-v0.3.1.linux-amd64
 
 services:
-  - name: registry.git.chalmers.se/courses/dit638/students/docker/docker:19.03.3-dind
+  - name: docker:26.0.1-dind
     alias: docker
 
 stages:
