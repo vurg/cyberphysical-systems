@@ -4,13 +4,30 @@
 ### Current Build Status
 [![pipeline status](https://git.chalmers.se/courses/dit638/students/2024-group-21/badges/main/pipeline.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/pipelines)
 
+## Acknowledgments
+Special thanks to @christian.berger for his contributions to the foundational libraries used in our project, including OpenDLV, libcluon, and the opencvv template file, which have been instrumental in the development of our cyber-physical systems project.
+
 ## Installation
 To install our system, complete the following steps:
 
 1. Clone this repository into your preferred directory with ```git clone git@git.chalmers.se:courses/dit638/students/2024-group-21.git```
-2. Run ```cd a5``` and open helloworld.cpp. Modify "LastName, FirstName" to your name.
-3. docker build -t CID/example:latest -f Dockerfile .
-4. docker run --rm CID/example:latest 42
+2. Build the project (steering wheel angle calculator microservice) using Dockerfile:
+```
+cd cpp-opencv
+docker build -f Dockerfile -t anglecalculator .
+```
+3. Run microservices in same directory as recording files:
+```
+// terminal 1: openDLV - new terminal window (ctrl+alt+t):
+docker run --rm -i --init --net=host --name=opendlv-vehicle-view -v $PWD:/opt/vehicle-view/recordings -v /var/run/docker.sock:/var/run/docker.sock -p 8081:8081 chrberger/opendlv-vehicle-view:v0.0.64
+
+// terminal 2: h264decoder - new terminal tab (ctrl+shift+t):
+docker run --rm -ti --net=host --ipc=host -e DISPLAY=$DISPLAY -v /tmp:/tmp h264decoder:v0.0.5 --cid=253 --name=img
+
+// terminal 3: template project microservice (steering wheel angle calculator) - new terminal tab (ctrl+shift+t):
+xhost +
+docker run --rm -ti --net=host --ipc=host -e DISPLAY=$DISPLAY -v /tmp:/tmp anglecalculator:latest --cid=253 --name=img --width=640 --height=480 --verbose 
+```
 
 ## Adding New Features
 We will be following the basic git workflow and ensure usual code reviews.
