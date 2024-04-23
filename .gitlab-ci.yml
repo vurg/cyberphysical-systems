@@ -44,9 +44,9 @@ build-and-test:
     - docker-build
   stage: build
   script:
-    - cd a5
-    - docker build -t primechecker -f Dockerfile .
-    - docker run -d --name test-container primechecker
+    - cd cpp-opencv
+    - docker build -t anglecalculator -f Dockerfile .
+    - docker run -d --name test-container anglecalculator
     - docker cp test-container:/opt/coverage.info $CI_PROJECT_DIR/coverage.info
     - docker cp test-container:/opt/out $CI_PROJECT_DIR/out
     - docker stop test-container
@@ -73,7 +73,7 @@ release:
     - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx ls df -h
     - docker login -u gitlab-ci-token -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
   script:
-    - cd a5
+    - cd cpp-opencv
     - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform $CI_BUILDX_ARCHS -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" --push .
   only:
     - tags
