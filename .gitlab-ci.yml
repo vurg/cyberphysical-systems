@@ -47,14 +47,14 @@ build-and-test:
     - cd cpp-opencv
     - docker build -t anglecalculator -f Dockerfile .
     - docker run -d --name test-container anglecalculator
-    - docker cp test-container:/opt/coverage.info $CI_PROJECT_DIR/coverage.info
-    - docker cp test-container:/opt/out $CI_PROJECT_DIR/out
+    #- docker cp test-container:/opt/coverage.info $CI_PROJECT_DIR/coverage.info
+    #- docker cp test-container:/opt/out $CI_PROJECT_DIR/out
     - docker stop test-container
     - docker rm test-container
   artifacts:
     paths:
-      - coverage.info
-      - out/
+      #- coverage.info
+      #- out/
   except:
     - tags  # This prevents the build-and-test job from running on new tags
 
