@@ -3,6 +3,9 @@
 
 ### Current Build Status
 [![pipeline status](https://git.chalmers.se/courses/dit638/students/2024-group-21/badges/main/pipeline.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/pipelines)
+[![coverage report](https://git.chalmers.se/courses/dit638/students/2024-group-21/badges/main/coverage.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/commits/main)
+[![Latest Release](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/badges/release.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/releases)
+
 
 ## Acknowledgments
 Special thanks to @christian.berger for his contributions to the foundational libraries used in our project, including OpenDLV, libcluon, and the opencvv template file, which have been instrumental in the development of our cyber-physical systems project.
