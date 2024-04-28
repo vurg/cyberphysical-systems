@@ -142,8 +142,8 @@ int32_t main(int32_t argc, char **argv) {
 
                 //  Blurring controls
                 cv::namedWindow("Blurring Inspector2", CV_WINDOW_AUTOSIZE);
-                cvCreateTrackbar("Kernel Size(input x input)", "Blurring Inspector2", &gaussianKernelSize, 4);
-                cvCreateTrackbar("Standard Deviation", "Blurring Inspector2", &gaussianStandardDeviation, 9999);
+                cvCreateTrackbar("Kernel Size(input x input)", "Blurring Inspector", &gaussianKernelSize, 4);
+                cvCreateTrackbar("Standard Deviation", "Blurring Inspector", &gaussianStandardDeviation, 9999);
 
                 //  Blurring
                 GaussianBlur(croppedImg, blurredCroppedImg, Size(gaussianKernelSizeOptions[gaussianKernelSize], gaussianKernelSizeOptions[gaussianKernelSize]), gaussianStandardDeviation, gaussianKernelSize);
