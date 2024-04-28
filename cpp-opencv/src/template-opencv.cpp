@@ -27,6 +27,9 @@
 #include <chrono>
 #include <iomanip>
 
+using namespace cv;
+using namespace std;
+
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
@@ -80,7 +83,7 @@ int32_t main(int32_t argc, char **argv) {
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
-                cv::Mat img;
+                cv::Mat img, croppedImg;
 
                 // Wait for a notification of a new frame.
                 sharedMemory->wait();
@@ -95,43 +98,42 @@ int32_t main(int32_t argc, char **argv) {
                 // TODO: Here, you can add some code to check the sampleTimePoint when the current frame was captured.
                 sharedMemory->unlock();
 
-                // TODO: Do something with the frame.
+                /* If needed again in the future ...
 
+                // Get current time as a time_point object
+                auto now = std::chrono::system_clock::now();
 
-    // Get current time as a time_point object
-    auto now = std::chrono::system_clock::now();
+                // Convert time_point object to time_t
+                std::time_t now_t = std::chrono::system_clock::to_time_t(now);
 
-    // Convert time_point object to time_t
-    std::time_t now_t = std::chrono::system_clock::to_time_t(now);
+                // Convert time_t to tm as UTC
+                std::tm* now_tm = std::gmtime(&now_t);
 
-    // Convert time_t to tm as UTC
-    std::tm* now_tm = std::gmtime(&now_t);
+                // Prepare output stream
+                std::ostringstream oss;
 
-    // Prepare output stream
-    std::ostringstream oss;
+                // Write time into the output stream
+                oss << std::put_time(now_tm, "%Y-%m-%dT%H:%M:%SZ");
 
-    // Write time into the output stream
-    oss << std::put_time(now_tm, "%Y-%m-%dT%H:%M:%SZ");
+                // Get string from output stream
+                std::string utc_time = oss.str();
 
-    // Get string from output stream
-    std::string utc_time = oss.str();
+                std::string imageMessage = "Now: " + utc_time + ";" + " ts: " + timeStamp + ";";
 
-
-    std::string imageMessage = "Now: " + utc_time + ";" + " ts: " + timeStamp + ";" + " Rowley, Kai";
-
-
-  cv::putText(img,                     // Image to draw on
-            imageMessage,            // Text to draw
-            cv::Point(5, 50),       // Position of the text (x, y)
-            cv::FONT_HERSHEY_TRIPLEX, // Font type
-            0.5,                     // Font scale
-            cv::Scalar(255, 255, 255),   // Font color (BGR)
-            1,                       // Font thickness
-            cv::LINE_AA);            // Anti-aliasing
-
+                cv::putText(img,                     // Image to draw on
+                imageMessage,            // Text to draw
+                cv::Point(5, 50),       // Position of the text (x, y)
+                cv::FONT_HERSHEY_TRIPLEX, // Font type
+                0.5,                     // Font scale
+                cv::Scalar(255, 255, 255),   // Font color (BGR)
+                1,                       // Font thickness
+                cv::LINE_AA);            // Anti-aliasing
 
                 // Example: Draw a red rectangle and display image.
                 cv::rectangle(img, cv::Point(50, 50), cv::Point(100, 100), cv::Scalar(0,0,255));
+                */
+
+                croppedImg = img(cv::Rect(0, 255, 640, 155));
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
@@ -142,6 +144,7 @@ int32_t main(int32_t argc, char **argv) {
                 // Display image on your screen.
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);
+                    imshow("cropped image", croppedImg);
                     cv::waitKey(1);
                 }
             }
