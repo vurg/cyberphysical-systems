@@ -14,7 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Which Docker image shall be used on the GitLab runner?
-image: docker:26.0.1
+image: $CI_REGISTRY/courses/dit638/students/2024-group-21/docker:26.0.1
 
 # Details about how to connect to the Docker service to run this build.
 variables:
@@ -24,8 +24,9 @@ variables:
   CI_BUILDX_ARCHS: "linux/amd64,linux/arm64,linux/arm/v7"
   BUILDX_URL: https://github.com/docker/buildx/releases/download/v0.3.1/buildx-v0.3.1.linux-amd64
 
+# We are running Docker inside Docker
 services:
-  - name: docker:26.0.1-dind
+  - name: $CI_REGISTRY/courses/dit638/students/2024-group-21/docker:26.0.1-dind
     alias: docker
 
 stages:
@@ -33,9 +34,11 @@ stages:
   - deploy
   - publish
 
-# Display information before we start the build.
+# Display information before we start the build job.
 before_script:
-  - docker info
+  - uname -m # print runner architecture (eg. x86-64 or ARM)
+  - uname -a # print info about operating system
+  - docker info # print info about docker installation and environment
   - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
 
 # This section describes what shall be done to build and test the project.
@@ -44,13 +47,24 @@ build-and-test:
     - docker-build
   stage: build
   script:
+    # build microservice
     - cd cpp-opencv
     - docker build -t anglecalculator -f Dockerfile .
+    
+    # run and test microservice
     - docker run -d --name test-container anglecalculator
+    - docker logs --follow test-container
     #- docker cp test-container:/opt/coverage.info $CI_PROJECT_DIR/coverage.info
     #- docker cp test-container:/opt/out $CI_PROJECT_DIR/out
     - docker stop test-container
     - docker rm test-container
+
+    # run microservice in recordings folder
+    - cd ../recordings 
+    - ls
+    # TODO: establish access to other microservices using shell scripts
+    - docker run --rm --net=host --ipc=host -e DISPLAY=$DISPLAY -v /tmp:/tmp anglecalculator:latest --cid=253 --name=img --width=640 --height=480 --verbose
+    - cd -
   artifacts:
     paths:
       #- coverage.info
