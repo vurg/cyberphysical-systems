@@ -80,10 +80,14 @@ int32_t main(int32_t argc, char **argv) {
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
+            int gaussianKernelSize = 0, gaussianStandardDeviation = 0;
+
+            int gaussianKernelSizeOptions[] = {1, 3, 5, 11, 13};
+
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
-                cv::Mat img, croppedImg;
+                cv::Mat img, croppedImg, blurredCroppedImg;
 
                 // Wait for a notification of a new frame.
                 sharedMemory->wait();
@@ -95,7 +99,7 @@ int32_t main(int32_t argc, char **argv) {
                     cv::Mat wrapped(HEIGHT, WIDTH, CV_8UC4, sharedMemory->data());
                     img = wrapped.clone();
                 }
-                // TODO: Here, you can add some code to check the sampleTimePoint when the current frame was captured.
+     
                 sharedMemory->unlock();
 
                 /* If needed again in the future ...
@@ -133,7 +137,16 @@ int32_t main(int32_t argc, char **argv) {
                 cv::rectangle(img, cv::Point(50, 50), cv::Point(100, 100), cv::Scalar(0,0,255));
                 */
 
+                //  Cropping
                 croppedImg = img(cv::Rect(0, 255, 640, 155));
+
+                //  Blurring controls
+                cv::namedWindow("Blurring Inspector2", CV_WINDOW_AUTOSIZE);
+                cvCreateTrackbar("Kernel Size(input x input)", "Blurring Inspector2", &gaussianKernelSize, 4);
+                cvCreateTrackbar("Standard Deviation", "Blurring Inspector2", &gaussianStandardDeviation, 9999);
+
+                //  Blurring
+                GaussianBlur(croppedImg, blurredCroppedImg, Size(gaussianKernelSizeOptions[gaussianKernelSize], gaussianKernelSizeOptions[gaussianKernelSize]), gaussianStandardDeviation, gaussianKernelSize);
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
@@ -145,6 +158,7 @@ int32_t main(int32_t argc, char **argv) {
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);
                     imshow("cropped image", croppedImg);
+                    imshow("blurred image", blurredCroppedImg);
                     cv::waitKey(1);
                 }
             }
