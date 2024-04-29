@@ -84,6 +84,11 @@ int32_t main(int32_t argc, char **argv) {
 
             int gaussianKernelSizeOptions[] = {1, 3, 5, 11, 13};
 
+            //  Blurring controls
+            cv::namedWindow("Blurring Inspector", CV_WINDOW_AUTOSIZE);
+            cvCreateTrackbar("Kernel Size Mode", "Blurring Inspector", &gaussianKernelSize, 4);
+            cvCreateTrackbar("Standard Deviation", "Blurring Inspector", &gaussianStandardDeviation, 9999);
+
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
@@ -139,11 +144,6 @@ int32_t main(int32_t argc, char **argv) {
 
                 //  Cropping
                 croppedImg = img(cv::Rect(0, 255, 640, 155));
-
-                //  Blurring controls
-                cv::namedWindow("Blurring Inspector2", CV_WINDOW_AUTOSIZE);
-                cvCreateTrackbar("Kernel Size(input x input)", "Blurring Inspector", &gaussianKernelSize, 4);
-                cvCreateTrackbar("Standard Deviation", "Blurring Inspector", &gaussianStandardDeviation, 9999);
 
                 //  Blurring
                 GaussianBlur(croppedImg, blurredCroppedImg, Size(gaussianKernelSizeOptions[gaussianKernelSize], gaussianKernelSizeOptions[gaussianKernelSize]), gaussianStandardDeviation, gaussianKernelSize);
