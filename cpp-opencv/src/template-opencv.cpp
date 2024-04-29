@@ -148,6 +148,13 @@ int32_t main(int32_t argc, char **argv) {
                 //  Blurring
                 GaussianBlur(croppedImg, blurredCroppedImg, Size(gaussianKernelSizeOptions[gaussianKernelSize], gaussianKernelSizeOptions[gaussianKernelSize]), gaussianStandardDeviation, gaussianKernelSize);
 
+                // Create matrix for storing blurred image copy
+                cv::Mat hsvImage;
+                // Copy blurred image into new matrix
+                blurredCroppedImg.copyTo(hsvImage);
+                // Convert the copied image into hsv color space
+                cv::cvtColor(hsvImage, hsvImage, cv::COLOR_BGR2HSV);
+
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
                     std::lock_guard<std::mutex> lck(gsrMutex);
