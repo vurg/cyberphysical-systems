@@ -30,6 +30,10 @@
 using namespace cv;
 using namespace std;
 
+// Define color range for detecting yellow cones in HSV color space
+cv::Scalar yellowMin = cv::Scalar(20, 60, 70);
+cv::Scalar yellowMax = cv::Scalar(40, 200, 200);
+
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
@@ -154,6 +158,12 @@ int32_t main(int32_t argc, char **argv) {
                 blurredCroppedImg.copyTo(hsvImage);
                 // Convert the copied image into hsv color space
                 cv::cvtColor(hsvImage, hsvImage, cv::COLOR_BGR2HSV);
+
+                // Create a mask isolating yellow hues within the specified range.
+                cv::Mat mask;
+                cv::inRange(hsvImg, yellowMin, yellowMax, mask);
+                // Find contours to store outlines of the yellow cones
+                std::vector<std::vector<cv::Point>> yellowContours;
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
