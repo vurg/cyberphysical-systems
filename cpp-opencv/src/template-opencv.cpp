@@ -33,6 +33,9 @@ using namespace std;
 // Define color range for detecting yellow cones in HSV color space
 cv::Scalar yellowMin = cv::Scalar(20, 60, 70);
 cv::Scalar yellowMax = cv::Scalar(40, 200, 200);
+// Define color range for detecting blue cones in HSV color space
+cv::Scalar blueMin = cv::Scalar(100, 50, 30);
+cv::Scalar blueMax = cv::Scalar(120, 255, 255);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -160,10 +163,16 @@ int32_t main(int32_t argc, char **argv) {
                 cv::cvtColor(hsvImage, hsvImage, cv::COLOR_BGR2HSV);
 
                 // Create a mask isolating yellow hues within the specified range.
-                cv::Mat mask;
-                cv::inRange(hsvImg, yellowMin, yellowMax, mask);
+                cv::Mat yellowMask;
+                cv::inRange(hsvImg, yellowMin, yellowMax, yellowMask);
                 // Find contours to store outlines of the yellow cones
                 std::vector<std::vector<cv::Point>> yellowContours;
+
+                // Create a mask isolating blue hues within the specified range.
+                cv::Mat blueMask;
+                cv::inRange(hsvImg, blueMin, blueMax, blueMask);
+                // Find contours to store outlines of the yellow cones
+                std::vector<std::vector<cv::Point>> blueContours;
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
