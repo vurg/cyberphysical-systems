@@ -103,6 +103,9 @@ int32_t main(int32_t argc, char **argv) {
             //  Color controls
             cv::namedWindow("Blue Inspector", cv::WINDOW_AUTOSIZE);
             int blueMinH{100}, blueMaxH{120}, blueMinS{50}, blueMaxS{255}, blueMinV{30}, blueMaxV{255};
+            cv::namedWindow("Yellow Inspector", cv::WINDOW_AUTOSIZE);
+            int yellowMinH{20}, yellowMaxH{40}, yellowMinS{60}, yellowMaxS{200}, yellowMinV{70}, yellowMaxV{200};
+
             //  Sliders for blue color
             cv::createTrackbar("Hue (min)", "Blue Inspector", &blueMinH, 179);
             cv::createTrackbar("Hue (max)", "Blue Inspector", &blueMaxH, 179);
@@ -110,6 +113,14 @@ int32_t main(int32_t argc, char **argv) {
             cv::createTrackbar("Sat (max)", "Blue Inspector", &blueMaxS, 255);
             cv::createTrackbar("Val (min)", "Blue Inspector", &blueMinV, 255);
             cv::createTrackbar("Val (max)", "Blue Inspector", &blueMaxV, 255);
+            
+            // Sliders for yellow color
+            cv::createTrackbar("Hue (min)", "Yellow Inspector", &yellowMinH, 179);
+            cv::createTrackbar("Hue (max)", "Yellow Inspector", &yellowMaxH, 179);
+            cv::createTrackbar("Sat (min)", "Yellow Inspector", &yellowMinS, 255);
+            cv::createTrackbar("Sat (max)", "Yellow Inspector", &yellowMaxS, 255);
+            cv::createTrackbar("Val (min)", "Yellow Inspector", &yellowMinV, 255);
+            cv::createTrackbar("Val (max)", "Yellow Inspector", &yellowMaxV, 255);
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
@@ -180,6 +191,8 @@ int32_t main(int32_t argc, char **argv) {
                 // Create masks for specific colors
                 cv::Mat blueMask;
                 cv::inRange(hsvImage, cv::Scalar(blueMinH, blueMinS, blueMinV), cv::Scalar(blueMaxH, blueMaxS, blueMaxV), blueMask);
+                cv::Mat yellowMask;
+                cv::inRange(hsvImage, cv::Scalar(yellowMinH, yellowMinS, yellowMinV), cv::Scalar(yellowMaxH, yellowMaxS, yellowMaxV), yellowMask);
                 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
@@ -193,6 +206,7 @@ int32_t main(int32_t argc, char **argv) {
                     imshow("cropped image", croppedImg);
                     imshow("blurred image", blurredCroppedImg);
                     imshow("Blue Inspector", blueMask);
+                    imshow("Yellow Inspector", yellowMask);
                     cv::waitKey(1);
                 }
             }
