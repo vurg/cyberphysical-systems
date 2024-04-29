@@ -32,14 +32,14 @@ using namespace std;
 
 // Define HSV color ranges for detecting yellow, blue, and red cones:
 // Each pair of Scalars defines the min and max H, S, and V values.
-cv::Scalar yellowMin = cv::Scalar(20, 60, 70);
-cv::Scalar yellowMax = cv::Scalar(40, 200, 200);
+// cv::Scalar yellowMin = cv::Scalar(20, 60, 70);
+// cv::Scalar yellowMax = cv::Scalar(40, 200, 200);
 
-cv::Scalar blueMin = cv::Scalar(100, 50, 30);
-cv::Scalar blueMax = cv::Scalar(120, 255, 255);
+// cv::Scalar blueMin = cv::Scalar(100, 50, 30);
+// cv::Scalar blueMax = cv::Scalar(120, 255, 255);
 
-cv::Scalar redMin = cv::Scalar(177, 100, 100);
-cv::Scalar redMax = cv::Scalar(179, 190, 255);
+// cv::Scalar redMin = cv::Scalar(177, 100, 100);
+// cv::Scalar redMax = cv::Scalar(179, 190, 255);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -105,6 +105,8 @@ int32_t main(int32_t argc, char **argv) {
             int blueMinH{100}, blueMaxH{120}, blueMinS{50}, blueMaxS{255}, blueMinV{30}, blueMaxV{255};
             cv::namedWindow("Yellow Inspector", cv::WINDOW_AUTOSIZE);
             int yellowMinH{20}, yellowMaxH{40}, yellowMinS{60}, yellowMaxS{200}, yellowMinV{70}, yellowMaxV{200};
+            cv::namedWindow("Red Inspector", cv::WINDOW_AUTOSIZE);
+            int redMinH{177}, redMaxH{179}, redMinS{100}, redMaxS{190}, redMinV{100}, redMaxV{255};
 
             //  Sliders for blue color
             cv::createTrackbar("Hue (min)", "Blue Inspector", &blueMinH, 179);
@@ -121,6 +123,14 @@ int32_t main(int32_t argc, char **argv) {
             cv::createTrackbar("Sat (max)", "Yellow Inspector", &yellowMaxS, 255);
             cv::createTrackbar("Val (min)", "Yellow Inspector", &yellowMinV, 255);
             cv::createTrackbar("Val (max)", "Yellow Inspector", &yellowMaxV, 255);
+            
+            // Sliders for red color
+            cv::createTrackbar("Hue (min)", "Red Inspector", &redMinH, 179);
+            cv::createTrackbar("Hue (max)", "Red Inspector", &redMaxH, 179);
+            cv::createTrackbar("Sat (min)", "Red Inspector", &redMinS, 255);
+            cv::createTrackbar("Sat (max)", "Red Inspector", &redMaxS, 255);
+            cv::createTrackbar("Val (min)", "Red Inspector", &redMinV, 255);
+            cv::createTrackbar("Val (max)", "Red Inspector", &redMaxV, 255);
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
@@ -193,6 +203,8 @@ int32_t main(int32_t argc, char **argv) {
                 cv::inRange(hsvImage, cv::Scalar(blueMinH, blueMinS, blueMinV), cv::Scalar(blueMaxH, blueMaxS, blueMaxV), blueMask);
                 cv::Mat yellowMask;
                 cv::inRange(hsvImage, cv::Scalar(yellowMinH, yellowMinS, yellowMinV), cv::Scalar(yellowMaxH, yellowMaxS, yellowMaxV), yellowMask);
+                cv::Mat redMask;
+                cv::inRange(hsvImage, cv::Scalar(redMinH, redMinS, redMinV), cv::Scalar(redMaxH, redMaxS, redMaxV), redMask);
                 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
@@ -207,6 +219,7 @@ int32_t main(int32_t argc, char **argv) {
                     imshow("blurred image", blurredCroppedImg);
                     imshow("Blue Inspector", blueMask);
                     imshow("Yellow Inspector", yellowMask);
+                    imshow("Red Inspector", redMask);
                     cv::waitKey(1);
                 }
             }
@@ -215,4 +228,3 @@ int32_t main(int32_t argc, char **argv) {
     }
     return retCode;
 }
-
