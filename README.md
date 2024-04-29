@@ -88,7 +88,7 @@ errors to the standard output.
 
 This format is applied when requesting a branch to be merged with another branch via a Merge Request.
 
-**Title**: Latest commit message header
+**Title**: Latest commit message header.
 
 **Body**: Closes #>>Issue Number<
 
