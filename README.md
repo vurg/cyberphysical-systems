@@ -63,6 +63,43 @@ git commit -m "#1 Implements parsing for rec files" -m "Works using xyz encoding
 ## Fixing Bugs
 We plan to fix unexpected behaviour by creating a respective issue for that specific bug and following the previously mentioned git workflow in creating a new branch to address that problem.
 
+
+### Code-Fix Issue Format:
+This format is applied when issuing a code change issue for e.g refactoring, renaming or typo-fixing intentions.
+
+**Title**: Header for issue of concern highlighting the intended fix.
+
+**Body**: Description of what the issue is and its fix is. ***Optional*** Address issue/s of which are concerned.
+
+***Optional*** **Tags**: Relevant tags, either one or many in combination pertaining to issue at hands e.g. Fix, Fix + Typo, Refactor etc.
+
+Concrete Example:
+```
+<title> Improve error handling in file processing
+
+<body> The file processing module does not handle errors 
+properly when encountering invalid input files. Improve error 
+handling by adding more informative error messages and logging 
+errors to the standard output.
+
+<tags> Fix, Error Output 
+```
+## Merge Request Format
+
+This format is applied when requesting a branch to be merged with another branch via a Merge Request.
+
+**Title**: Latest commit message header
+
+**Body**: Closes #>>Issue Number<
+
+Concrete Example:
+```
+<title> #50 Manage datatypes for redueced memory uptake
+
+<body> Closes #50
+
+```
+
 ## Contributers
 <table>
   <tr>
