@@ -94,11 +94,22 @@ int32_t main(int32_t argc, char **argv) {
             int gaussianKernelSize = 0, gaussianStandardDeviation = 0;
 
             int gaussianKernelSizeOptions[] = {1, 3, 5, 11, 13};
-
+            
             //  Blurring controls
             cv::namedWindow("Blurring Inspector", CV_WINDOW_AUTOSIZE);
             cvCreateTrackbar("Kernel Size Mode", "Blurring Inspector", &gaussianKernelSize, 4);
             cvCreateTrackbar("Standard Deviation", "Blurring Inspector", &gaussianStandardDeviation, 9999);
+            
+            //  Color controls
+            cv::namedWindow("Blue Inspector", cv::WINDOW_AUTOSIZE);
+            int blueMinH{100}, blueMaxH{120}, blueMinS{50}, blueMaxS{255}, blueMinV{30}, blueMaxV{255};
+            //  Sliders for blue color
+            cv::createTrackbar("Hue (min)", "Blue Inspector", &blueMinH, 179);
+            cv::createTrackbar("Hue (max)", "Blue Inspector", &blueMaxH, 179);
+            cv::createTrackbar("Sat (min)", "Blue Inspector", &blueMinS, 255);
+            cv::createTrackbar("Sat (max)", "Blue Inspector", &blueMaxS, 255);
+            cv::createTrackbar("Val (min)", "Blue Inspector", &blueMinV, 255);
+            cv::createTrackbar("Val (max)", "Blue Inspector", &blueMaxV, 255);
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
@@ -166,20 +177,10 @@ int32_t main(int32_t argc, char **argv) {
                 // Convert the copied image into hsv color space
                 cv::cvtColor(hsvImage, hsvImage, cv::COLOR_BGR2HSV);
 
-                // Create masks isolating yellow, blue, and red hues within their respective ranges,
-                // and find contours to store outlines of cones of each color.
-                cv::Mat yellowMask;
-                cv::inRange(hsvImg, yellowMin, yellowMax, yellowMask);
-                std::vector<std::vector<cv::Point>> yellowContours;
-
+                // Create masks for specific colors
                 cv::Mat blueMask;
-                cv::inRange(hsvImg, blueMin, blueMax, blueMask);
-                std::vector<std::vector<cv::Point>> blueContours;
-
-                cv::Mat redMask;
-                cv::inRange(hsvImg, redMin, redMax, redMask);
-                std::vector<std::vector<cv::Point>> redContours;
-
+                cv::inRange(hsvImage, cv::Scalar(blueMinH, blueMinS, blueMinV), cv::Scalar(blueMaxH, blueMaxS, blueMaxV), blueMask);
+                
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
                     std::lock_guard<std::mutex> lck(gsrMutex);
@@ -191,6 +192,7 @@ int32_t main(int32_t argc, char **argv) {
                     cv::imshow(sharedMemory->name().c_str(), img);
                     imshow("cropped image", croppedImg);
                     imshow("blurred image", blurredCroppedImg);
+                    imshow("Blue Inspector", blueMask);
                     cv::waitKey(1);
                 }
             }
