@@ -169,15 +169,15 @@ int32_t main(int32_t argc, char **argv) {
                 // Create masks isolating yellow, blue, and red hues within their respective ranges,
                 // and find contours to store outlines of cones of each color.
                 cv::Mat yellowMask;
-                cv::inRange(hsvImg, yellowMin, yellowMax, yellowMask);
+                cv::inRange(hsvImage, yellowMin, yellowMax, yellowMask);
                 std::vector<std::vector<cv::Point>> yellowContours;
 
                 cv::Mat blueMask;
-                cv::inRange(hsvImg, blueMin, blueMax, blueMask);
+                cv::inRange(hsvImage, blueMin, blueMax, blueMask);
                 std::vector<std::vector<cv::Point>> blueContours;
 
                 cv::Mat redMask;
-                cv::inRange(hsvImg, redMin, redMax, redMask);
+                cv::inRange(hsvImage, redMin, redMax, redMask);
                 std::vector<std::vector<cv::Point>> redContours;
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
