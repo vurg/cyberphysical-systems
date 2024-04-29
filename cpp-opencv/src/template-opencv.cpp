@@ -27,6 +27,20 @@
 #include <chrono>
 #include <iomanip>
 
+using namespace cv;
+using namespace std;
+
+// Define HSV color ranges for detecting yellow, blue, and red cones:
+// Each pair of Scalars defines the min and max H, S, and V values.
+cv::Scalar yellowMin = cv::Scalar(20, 60, 70);
+cv::Scalar yellowMax = cv::Scalar(40, 200, 200);
+
+cv::Scalar blueMin = cv::Scalar(100, 50, 30);
+cv::Scalar blueMax = cv::Scalar(120, 255, 255);
+
+cv::Scalar redMin = cv::Scalar(177, 100, 100);
+cv::Scalar redMax = cv::Scalar(179, 190, 255);
+
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
@@ -77,10 +91,30 @@ int32_t main(int32_t argc, char **argv) {
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
+            int gaussianKernelSize = 0, gaussianStandardDeviation = 0;
+
+            int gaussianKernelSizeOptions[] = {1, 3, 5, 11, 13};
+            
+            //  Blurring controls
+            cv::namedWindow("Blurring Inspector", CV_WINDOW_AUTOSIZE);
+            cvCreateTrackbar("Kernel Size Mode", "Blurring Inspector", &gaussianKernelSize, 4);
+            cvCreateTrackbar("Standard Deviation", "Blurring Inspector", &gaussianStandardDeviation, 9999);
+            
+            //  Color controls
+            cv::namedWindow("Blue Inspector", cv::WINDOW_AUTOSIZE);
+            int blueMinH{100}, blueMaxH{120}, blueMinS{50}, blueMaxS{255}, blueMinV{30}, blueMaxV{255};
+            //  Sliders for blue color
+            cv::createTrackbar("Hue (min)", "Blue Inspector", &blueMinH, 179);
+            cv::createTrackbar("Hue (max)", "Blue Inspector", &blueMaxH, 179);
+            cv::createTrackbar("Sat (min)", "Blue Inspector", &blueMinS, 255);
+            cv::createTrackbar("Sat (max)", "Blue Inspector", &blueMaxS, 255);
+            cv::createTrackbar("Val (min)", "Blue Inspector", &blueMinV, 255);
+            cv::createTrackbar("Val (max)", "Blue Inspector", &blueMaxV, 255);
+
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
-                cv::Mat img;
+                cv::Mat img, croppedImg, blurredCroppedImg;
 
                 // Wait for a notification of a new frame.
                 sharedMemory->wait();
@@ -92,47 +126,61 @@ int32_t main(int32_t argc, char **argv) {
                     cv::Mat wrapped(HEIGHT, WIDTH, CV_8UC4, sharedMemory->data());
                     img = wrapped.clone();
                 }
-                // TODO: Here, you can add some code to check the sampleTimePoint when the current frame was captured.
+     
                 sharedMemory->unlock();
 
-                // TODO: Do something with the frame.
+                /* If needed again in the future ...
 
+                // Get current time as a time_point object
+                auto now = std::chrono::system_clock::now();
 
-    // Get current time as a time_point object
-    auto now = std::chrono::system_clock::now();
+                // Convert time_point object to time_t
+                std::time_t now_t = std::chrono::system_clock::to_time_t(now);
 
-    // Convert time_point object to time_t
-    std::time_t now_t = std::chrono::system_clock::to_time_t(now);
+                // Convert time_t to tm as UTC
+                std::tm* now_tm = std::gmtime(&now_t);
 
-    // Convert time_t to tm as UTC
-    std::tm* now_tm = std::gmtime(&now_t);
+                // Prepare output stream
+                std::ostringstream oss;
 
-    // Prepare output stream
-    std::ostringstream oss;
+                // Write time into the output stream
+                oss << std::put_time(now_tm, "%Y-%m-%dT%H:%M:%SZ");
 
-    // Write time into the output stream
-    oss << std::put_time(now_tm, "%Y-%m-%dT%H:%M:%SZ");
+                // Get string from output stream
+                std::string utc_time = oss.str();
 
-    // Get string from output stream
-    std::string utc_time = oss.str();
+                std::string imageMessage = "Now: " + utc_time + ";" + " ts: " + timeStamp + ";";
 
-
-    std::string imageMessage = "Now: " + utc_time + ";" + " ts: " + timeStamp + ";" + " Rowley, Kai";
-
-
-  cv::putText(img,                     // Image to draw on
-            imageMessage,            // Text to draw
-            cv::Point(5, 50),       // Position of the text (x, y)
-            cv::FONT_HERSHEY_TRIPLEX, // Font type
-            0.5,                     // Font scale
-            cv::Scalar(255, 255, 255),   // Font color (BGR)
-            1,                       // Font thickness
-            cv::LINE_AA);            // Anti-aliasing
-
+                cv::putText(img,                     // Image to draw on
+                imageMessage,            // Text to draw
+                cv::Point(5, 50),       // Position of the text (x, y)
+                cv::FONT_HERSHEY_TRIPLEX, // Font type
+                0.5,                     // Font scale
+                cv::Scalar(255, 255, 255),   // Font color (BGR)
+                1,                       // Font thickness
+                cv::LINE_AA);            // Anti-aliasing
 
                 // Example: Draw a red rectangle and display image.
                 cv::rectangle(img, cv::Point(50, 50), cv::Point(100, 100), cv::Scalar(0,0,255));
+                */
 
+                //  Cropping
+                croppedImg = img(cv::Rect(0, 255, 640, 155));
+
+                //  Blurring
+                GaussianBlur(croppedImg, blurredCroppedImg, Size(gaussianKernelSizeOptions[gaussianKernelSize], gaussianKernelSizeOptions[gaussianKernelSize]), gaussianStandardDeviation, gaussianKernelSize);
+
+                // Create matrix for storing blurred image copy
+                cv::Mat hsvImage;
+                // Copy blurred image into new matrix
+                blurredCroppedImg.copyTo(hsvImage);
+                // Convert the copied image into hsv color space
+                cv::cvtColor(hsvImage, hsvImage, cv::COLOR_BGR2HSV);
+
+                // Create masks for specific colors
+                cv::Mat blueMask;
+                cv::inRange(hsvImage, cv::Scalar(blueMinH, blueMinS, blueMinV), cv::Scalar(blueMaxH, blueMaxS, blueMaxV), blueMask);
+                
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
                     std::lock_guard<std::mutex> lck(gsrMutex);
@@ -142,6 +190,9 @@ int32_t main(int32_t argc, char **argv) {
                 // Display image on your screen.
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);
+                    imshow("cropped image", croppedImg);
+                    imshow("blurred image", blurredCroppedImg);
+                    imshow("Blue Inspector", blueMask);
                     cv::waitKey(1);
                 }
             }
