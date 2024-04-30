@@ -91,15 +91,16 @@ int32_t main(int32_t argc, char **argv) {
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
-            int gaussianKernelSize = 0, gaussianStandardDeviation = 0;
+            int gaussianKernelSize = 0, gaussianStandardDeviationX = 0, gaussianStandardDeviationY = 0;
 
             int gaussianKernelSizeOptions[] = {1, 3, 5, 11, 13};
             
             //  Blurring controls
             cv::namedWindow("Blurring Inspector", CV_WINDOW_AUTOSIZE);
             cvCreateTrackbar("Kernel Size Mode", "Blurring Inspector", &gaussianKernelSize, 4);
-            cvCreateTrackbar("Standard Deviation", "Blurring Inspector", &gaussianStandardDeviation, 9999);
-            
+            cvCreateTrackbar("Standard Deviation X axis", "Blurring Inspector", &gaussianStandardDeviationX, 9999);
+            cvCreateTrackbar("Standard Deviation Y axis", "Blurring Inspector", &gaussianStandardDeviationY, 9999);
+
             //  Color controls
             cv::namedWindow("Blue Inspector", cv::WINDOW_AUTOSIZE);
             int blueMinH{100}, blueMaxH{120}, blueMinS{50}, blueMaxS{255}, blueMinV{30}, blueMaxV{255};
@@ -189,7 +190,7 @@ int32_t main(int32_t argc, char **argv) {
                 croppedImg = img(cv::Rect(0, 255, 640, 155));
 
                 //  Blurring
-                GaussianBlur(croppedImg, blurredCroppedImg, Size(gaussianKernelSizeOptions[gaussianKernelSize], gaussianKernelSizeOptions[gaussianKernelSize]), gaussianStandardDeviation, gaussianKernelSize);
+                GaussianBlur(croppedImg, blurredCroppedImg, Size(gaussianKernelSizeOptions[gaussianKernelSize], gaussianKernelSizeOptions[gaussianKernelSize]), gaussianStandardDeviationX, gaussianStandardDeviationY);
 
                 // Create matrix for storing blurred image copy
                 cv::Mat hsvImage;
