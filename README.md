@@ -90,7 +90,9 @@ This format is applied when requesting a branch to be merged with another branch
 
 **Title**: Latest commit message header.
 
-**Body**: Closes #>>Issue Number<
+**Body**: Closes #>>Issue Number<<. ***Optional*** Any other relevant information.
+
+***Optional*** **Tags**: Relevant tags, either one or many in combination pertaining to the Merge Request at hands e.g. Feature, Fix + Bug, Test etc.
 
 Concrete Example:
 ```
