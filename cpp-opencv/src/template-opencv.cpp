@@ -91,14 +91,7 @@ int32_t main(int32_t argc, char **argv) {
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
-            int gaussianKernelSize = 0, gaussianStandardDeviation = 0;
-
-            int gaussianKernelSizeOptions[] = {1, 3, 5, 11, 13};
-
-            //  Blurring controls
-            cv::namedWindow("Blurring Inspector", CV_WINDOW_AUTOSIZE);
-            cvCreateTrackbar("Kernel Size Mode", "Blurring Inspector", &gaussianKernelSize, 4);
-            cvCreateTrackbar("Standard Deviation", "Blurring Inspector", &gaussianStandardDeviation, 9999);
+            int gaussianKernelSize = 3, gaussianStandardDeviationX = 3, gaussianStandardDeviationY = 3;
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
@@ -157,7 +150,7 @@ int32_t main(int32_t argc, char **argv) {
                 croppedImg = img(cv::Rect(0, 255, 640, 155));
 
                 //  Blurring
-                GaussianBlur(croppedImg, blurredCroppedImg, Size(gaussianKernelSizeOptions[gaussianKernelSize], gaussianKernelSizeOptions[gaussianKernelSize]), gaussianStandardDeviation, gaussianKernelSize);
+                GaussianBlur(croppedImg, blurredCroppedImg, Size(gaussianKernelSize, gaussianKernelSize), gaussianStandardDeviationX, gaussianStandardDeviationY);
 
                 // Create matrix for storing blurred image copy
                 cv::Mat hsvImage;
@@ -189,8 +182,7 @@ int32_t main(int32_t argc, char **argv) {
                 // Display image on your screen.
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);
-                    imshow("cropped image", croppedImg);
-                    imshow("blurred image", blurredCroppedImg);
+                    imshow("cropped blurred image", blurredCroppedImg);
                     cv::waitKey(1);
                 }
             }
