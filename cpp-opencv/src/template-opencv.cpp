@@ -27,9 +27,6 @@
 #include <chrono>
 #include <iomanip>
 
-using namespace cv;
-using namespace std;
-
 // Define HSV color ranges for detecting yellow, blue, and red cones:
 // Each pair of Scalars defines the min and max H, S, and V values.
 cv::Scalar yellowMin = cv::Scalar(20, 60, 70);
@@ -150,7 +147,7 @@ int32_t main(int32_t argc, char **argv) {
                 croppedImg = img(cv::Rect(0, 255, 640, 155));
 
                 //  Blurring
-                GaussianBlur(croppedImg, blurredCroppedImg, Size(gaussianKernelSize, gaussianKernelSize), gaussianStandardDeviationX, gaussianStandardDeviationY);
+                cv::GaussianBlur(croppedImg, blurredCroppedImg, cv::Size(gaussianKernelSize, gaussianKernelSize), gaussianStandardDeviationX, gaussianStandardDeviationY);
 
                 // Create matrix for storing blurred image copy
                 cv::Mat hsvImage;
@@ -182,7 +179,7 @@ int32_t main(int32_t argc, char **argv) {
                 // Display image on your screen.
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);
-                    imshow("cropped blurred image", blurredCroppedImg);
+                    cv::imshow("cropped blurred image", blurredCroppedImg);
                     cv::waitKey(1);
                 }
             }
