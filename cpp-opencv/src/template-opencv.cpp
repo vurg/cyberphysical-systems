@@ -27,9 +27,6 @@
 #include <chrono>
 #include <iomanip>
 
-using namespace cv;
-using namespace std;
-
 // Define HSV color ranges for detecting yellow, blue, and red cones:
 // Each pair of Scalars defines the min and max H, S, and V values.
 // cv::Scalar yellowMin = cv::Scalar(20, 60, 70);
@@ -190,7 +187,7 @@ int32_t main(int32_t argc, char **argv) {
                 croppedImg = img(cv::Rect(0, 255, 640, 155));
 
                 //  Blurring
-                GaussianBlur(croppedImg, blurredCroppedImg, Size(gaussianKernelSizeOptions[gaussianKernelSize], gaussianKernelSizeOptions[gaussianKernelSize]), gaussianStandardDeviationX, gaussianStandardDeviationY);
+                cv::GaussianBlur(croppedImg, blurredCroppedImg, cv::Size(gaussianKernelSizeOptions[gaussianKernelSize], gaussianKernelSizeOptions[gaussianKernelSize]), gaussianStandardDeviationX, gaussianStandardDeviationY);
 
                 // Create matrix for storing blurred image copy
                 cv::Mat hsvImage;
@@ -216,11 +213,10 @@ int32_t main(int32_t argc, char **argv) {
                 // Display image on your screen.
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);
-                    imshow("cropped image", croppedImg);
-                    imshow("blurred image", blurredCroppedImg);
-                    imshow("Blue Inspector", blueMask);
-                    imshow("Yellow Inspector", yellowMask);
-                    imshow("Red Inspector", redMask);
+                    cv::imshow("Cropped Blurred Image", blurredCroppedImg);
+                    cv::imshow("Blue Inspector", blueMask);
+                    cv::imshow("Yellow Inspector", yellowMask);
+                    cv::imshow("Red Inspector", redMask);
                     cv::waitKey(1);
                 }
             }
