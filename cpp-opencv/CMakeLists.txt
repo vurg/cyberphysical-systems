@@ -49,7 +49,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
     -Wuninitialized -Wunreachable-code \
     -Wunused -Wunused-function -Wunused-label -Wunused-parameter -Wunused-but-set-parameter -Wunused-but-set-variable \
     -Wunused-value -Wunused-variable -Wunused-result \
-    -Wmissing-field-initializers -Wmissing-format-attribute -Wmissing-include-dirs -Wmissing-noreturn")
+    -Wmissing-field-initializers -Wmissing-format-attribute -Wmissing-include-dirs \
+    -Wmissing-noreturn \
+    -Werror")
+
 # Threads are necessary for linking the resulting binaries as the network communication is running inside a thread.
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
