@@ -49,6 +49,7 @@ cv::Scalar redMax = cv::Scalar(179, 190, 253);
 // Function declarations
 float generateRandomSteeringAngle(); // (Likely remove for production) placeholder for actual calculations
 std::string calculatePercentageDifference(const std::string& calculatedStr, const std::string& actualStr);
+std::string padMicroseconds(const std::string& timeStamp);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -95,7 +96,7 @@ int32_t main(int32_t argc, char **argv) {
                 gsr = cluon::extractMessage<opendlv::proxy::GroundSteeringRequest>(std::move(env));
                 //std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
 
-                timeStamp = std::to_string(env.sampleTimeStamp().seconds()) + std::to_string(env.sampleTimeStamp().microseconds());
+                timeStamp = std::to_string(env.sampleTimeStamp().seconds()) + padMicroseconds(std::to_string(env.sampleTimeStamp().microseconds()));
             };
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
@@ -323,4 +324,15 @@ std::string calculatePercentageDifference(const std::string& calculatedStr, cons
     std::ostringstream oss;
     oss << std::fixed << std::setprecision(1) << difference << '%';
     return oss.str();
+}
+
+std::string padMicroseconds(const std::string& timeStamp) { // Note: this function is specifically for fixing truncation in MICROSECONDS ONLY
+    int requiredLength = 6;
+    int currentLength = timeStamp.length();
+    if (currentLength < requiredLength) { // If the timestamp is shorter than it should be
+        int zerosToAdd = requiredLength - currentLength; // Figure out how many zeros need to be added
+        std::string padding(zerosToAdd, '0');
+        return padding + timeStamp; // Add padding BEFORE the timestamp
+    }
+    return timeStamp; // If the timestamp is already 6 characters, just return it as normal
 }
