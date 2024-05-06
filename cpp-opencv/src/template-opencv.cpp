@@ -27,6 +27,9 @@
 #include <chrono>
 #include <iomanip>
 
+// Library for writing plotting data to a data file (CSV)
+#include <fstream>
+
 // (Likely remove for production) Random library for placeholder angle calculation
 #include <random>
 
@@ -50,6 +53,7 @@ cv::Scalar redMax = cv::Scalar(179, 190, 253);
 float generateRandomSteeringAngle(); // (Likely remove for production) placeholder for actual calculations
 std::string calculatePercentageDifference(const std::string& calculatedStr, const std::string& actualStr);
 std::string padMicroseconds(const std::string& timeStamp);
+void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &calculatedSteeringAngle, const std::string &actualGroundSteering);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -98,6 +102,11 @@ int32_t main(int32_t argc, char **argv) {
 
                 timeStamp = std::to_string(env.sampleTimeStamp().seconds()) + padMicroseconds(std::to_string(env.sampleTimeStamp().microseconds()));
             };
+
+            // Plotting data file setup (to make sure we dont use old data)
+            std::string filename = "/tmp/plotting_data.csv";
+            std::ofstream outFile;
+            outFile.open(filename, std::ios::out | std::ios::trunc); // Opens and resets existing data file
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
@@ -285,6 +294,7 @@ int32_t main(int32_t argc, char **argv) {
                     std::string actualGroundSteering = std::to_string(gsr.groundSteering());
                     //std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
                     std::cout << "group_21;" << timeStamp << ";" << calculatedSteeringAngle << ";" << actualGroundSteering << ";Percentage Difference: " << calculatePercentageDifference(calculatedSteeringAngle,actualGroundSteering) <<  std::endl;
+                    writeDataEntry(filename, timeStamp, calculatedSteeringAngle, actualGroundSteering);
                 }
 
                 // Display image on your screen.
@@ -335,4 +345,19 @@ std::string padMicroseconds(const std::string& timeStamp) { // Note: this functi
         return padding + timeStamp; // Add padding BEFORE the timestamp
     }
     return timeStamp; // If the timestamp is already 6 characters, just return it as normal
+}
+
+// Function that is called every frame to write the plotting data
+// Note: This function requires that the necessary file creation and cleanup is done at the beginning of main
+void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &calculatedSteeringAngle, const std::string &actualGroundSteering) {
+    std::ofstream file;
+    file.open(filename, std::ios_base::app); // opens data file
+
+    if(file.is_open()) {
+        // Writes data to file
+        file << timeStamp << "," << calculatedSteeringAngle << "," << actualGroundSteering << "\n";
+        file.close(); // Closes file
+    } else {
+        std::cout << "Failed to open data file: " << filename << std::endl;
+    }
 }
