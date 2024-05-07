@@ -216,22 +216,22 @@ int32_t main(int32_t argc, char **argv) {
                 cv::putText(yellowMask, yellowMaskFrameText, cv::Point(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
 
 
-                for (int i = 0; i < blueHierchy.size(); i++) {
-                        std::cout << "blue hierchy list number: " << i << std::endl;
-                    for (int j = 0; j < 4; j++) {
-                        std::cout << blueHierchy[i][j] << std::endl;
-                    }
-                }
+                // for (int i = 0; i < blueHierchy.size(); i++) {
+                //         std::cout << "blue hierchy list number: " << i << std::endl;
+                //     for (int j = 0; j < 4; j++) {
+                //         std::cout << blueHierchy[i][j] << std::endl;
+                //     }
+                // }
 
 
-                for (int i = 0; i < blueContours.size(); i++) {
-                        std::cout << "blue countor number: " << i << std::endl;
+                // for (int i = 0; i < blueContours.size(); i++) {
+                //         std::cout << "blue countor number: " << i << std::endl;
 
-                        cv::Rect boundingArea = cv::boundingRect(blueContours[i]);
-                        std::cout << "area: " << boundingArea.width*boundingArea.height << std::endl;
-                }
+                //         cv::Rect boundingArea = cv::boundingRect(blueContours[i]);
+                //         std::cout << "area: " << boundingArea.width*boundingArea.height << std::endl;
+                // }
 
-                std::cout << "" << std::endl; 
+                // std::cout << "" << std::endl; 
 
                 // cv::Mat redMask;
                 // std::vector<std::vector<cv::Point>> redContours;
