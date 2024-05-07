@@ -87,9 +87,13 @@ if(UNIX)
 endif()
 
 # This project uses OpenCV for image processing.
-find_package(OpenCV REQUIRED core highgui imgproc)
+find_package(OpenCV REQUIRED core highgui imgproc imgcodecs)
+
 include_directories(SYSTEM ${OpenCV_INCLUDE_DIRS})
-set(LIBRARIES ${LIBRARIES} ${OpenCV_LIBS})
+
+set(LIBRARIES ${LIBRARIES} ${OpenCV_LIBS} ${OpenCV_IMGCODECS_LIBRARIES} stdc++fs)
+
+
 
 ################################################################################
 # Create executable.

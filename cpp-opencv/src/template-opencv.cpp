@@ -16,16 +16,26 @@
  */
 
 // Include the single-file, header-only middleware libcluon to create high-performance microservices
-#include "cluon-complete.hpp"
-// Include the OpenDLV Standard Message Set that contains messages that are usually exchanged for automotive or robotic applications 
+
+
+#include "cluon-complete.hpp"  // For CLUON messaging framework
+
+// Include the OpenDLV Standard Message Set that contains messages for automotive or robotic applications 
 #include "opendlv-standard-message-set.hpp"
 
-// Include the GUI and image processing header files from OpenCV
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+// Include the standard library headers
+#include <chrono>   // For time-related operations
+#include <iomanip>  // For formatting output
 
-#include <chrono>
-#include <iomanip>
+// Include the image processing and GUI headers from OpenCV
+#include <opencv2/core.hpp>         // Core functionality
+#include <opencv2/imgproc/imgproc.hpp> // Image processing
+#include <opencv2/highgui/highgui.hpp> // GUI
+
+// Include filesystem header for filesystem operations
+#include <experimental/filesystem>
+
+namespace fs = std::experimental::filesystem;
 
 // Define HSV color ranges for detecting yellow, blue, and red cones:
 // Each pair of Scalars defines the min and max H, S, and V values.
@@ -37,6 +47,29 @@ cv::Scalar blueMax = cv::Scalar(120, 255, 253);
 
 cv::Scalar redMin = cv::Scalar(177, 100, 100);
 cv::Scalar redMax = cv::Scalar(179, 190, 253);
+
+bool writeImageToFolder(const cv::Mat& image, const std::string& folderPath, const std::string& filename) {
+    // Create the full path
+    std::string fullPath = folderPath + "/" + filename;
+
+    // Check if the folder exists
+    if (!fs::exists(folderPath)) {
+        // Create the folder if it doesn't exist
+        if (!fs::create_directories(folderPath)) {
+            std::cerr << "Failed to create folder: " << folderPath << std::endl;
+            return false;
+        }
+    }
+
+    // Write the image
+    if (!cv::imwrite(fullPath, image)) {
+        std::cerr << "Failed to write image to file: " << fullPath << std::endl;
+        return false;
+    }
+
+    std::cout << "Image saved to: " << fullPath << std::endl;
+    return true;
+}
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -81,12 +114,27 @@ int32_t main(int32_t argc, char **argv) {
                 //locks twice, to get image, to get data
                 //CHANGE HERE
                 gsr = cluon::extractMessage<opendlv::proxy::GroundSteeringRequest>(std::move(env));
-                std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
+                // std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
 
                 timeStamp = std::to_string(env.sampleTimeStamp().seconds()) + std::to_string(env.sampleTimeStamp().microseconds());
             };
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
+
+            char writeChoice;
+            char colorChoice;
+            std::string folderPath = "output";
+
+            while (!(writeChoice == 'y' || writeChoice == 'n')){
+                std::cout << "Write frames to a folder (y | n)?" << std::endl;
+                std::cin >> writeChoice;
+            }
+            if (writeChoice == 'y') {
+                while (!(colorChoice == 'b' || colorChoice == 'y')){
+                    std::cout << "Color to process: Blue (b) | Yellow (y)?" << std::endl;
+                    std::cin >> colorChoice;
+                }
+            }
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
@@ -106,7 +154,6 @@ int32_t main(int32_t argc, char **argv) {
      
                 sharedMemory->unlock();
 
-                /* If needed again in the future ...
 
                 // Get current time as a time_point object
                 auto now = std::chrono::system_clock::now();
@@ -128,18 +175,6 @@ int32_t main(int32_t argc, char **argv) {
 
                 std::string imageMessage = "Now: " + utc_time + ";" + " ts: " + timeStamp + ";";
 
-                cv::putText(img,                     // Image to draw on
-                imageMessage,            // Text to draw
-                cv::Point(5, 50),       // Position of the text (x, y)
-                cv::FONT_HERSHEY_TRIPLEX, // Font type
-                0.5,                     // Font scale
-                cv::Scalar(255, 255, 255),   // Font color (BGR)
-                1,                       // Font thickness
-                cv::LINE_AA);            // Anti-aliasing
-
-                // Example: Draw a red rectangle and display image.
-                cv::rectangle(img, cv::Point(50, 50), cv::Point(100, 100), cv::Scalar(0,0,255));
-                */
 
                 //  Cropping
                 croppedImg = img(cv::Rect(0, 255, 640, 144));
@@ -156,40 +191,73 @@ int32_t main(int32_t argc, char **argv) {
 
                 // Create masks isolating yellow, blue, and red hues within their respective ranges,
                 // and find contours to store outlines of cones of each color.
+
                 cv::Mat yellowMask;
-                cv::inRange(hsvImage, yellowMin, yellowMax, yellowMask);
                 std::vector<std::vector<cv::Point>> yellowContours;
-                cv::findContours(yellowMask, yellowContours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+                std::vector<cv::Vec4i> yellowHierchy;
+                cv::inRange(hsvImage, yellowMin, yellowMax, yellowMask);
+                cv::findContours(yellowMask, yellowContours, yellowHierchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+                cv::drawContours(croppedImg, yellowContours, -1, cv::Scalar(0, 255, 255), 2);
 
                 cv::Mat blueMask;
-                cv::inRange(hsvImage, blueMin, blueMax, blueMask);
                 std::vector<std::vector<cv::Point>> blueContours;
-                cv::findContours(blueMask, blueContours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+                std::vector<cv::Vec4i> blueHierchy;
+                cv::inRange(hsvImage, blueMin, blueMax, blueMask);
+                cv::findContours(blueMask, blueContours, blueHierchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+                cv::drawContours(croppedImg, blueContours, -1, cv::Scalar(255, 0, 0), 2);
 
-                
-                cv::Mat redMask;
-                cv::inRange(hsvImage, redMin, redMax, redMask);
-                std::vector<std::vector<cv::Point>> redContours;
-                cv::findContours(redMask, redContours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-                
+                //  Post Mask Modfications
+                //  For blue mask
+                std::string blueMaskFrameText = "Blue; " + timeStamp + "; " + utc_time;
+                cv::putText(blueMask, blueMaskFrameText, cv::Point(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+
+                //  For yellow mask
+                std::string yellowMaskFrameText = "Yellow; " + timeStamp + "; " + utc_time;
+                cv::putText(yellowMask, yellowMaskFrameText, cv::Point(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+
+
+                for (int i = 0; i < blueHierchy.size(); i++) {
+                        std::cout << "blue hierchy list number: " << i << std::endl;
+                    for (int j = 0; j < 4; j++) {
+                        std::cout << blueHierchy[i][j] << std::endl;
+                    }
+                }
+
+
+                for (int i = 0; i < blueContours.size(); i++) {
+                        std::cout << "blue countor number: " << i << std::endl;
+
+                        cv::Rect boundingArea = cv::boundingRect(blueContours[i]);
+                        std::cout << "area: " << boundingArea.width*boundingArea.height << std::endl;
+                }
+
+                std::cout << "" << std::endl; 
+
+                // cv::Mat redMask;
+                // std::vector<std::vector<cv::Point>> redContours;
+                // std::vector<cv::Vec4i> redHierchy;
+                // cv::inRange(hsvImage, redMin, redMax, redMask);
+                // cv::findContours(redMask, redContours, redHierchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+                // cv::drawContours(croppedImg, redContours, -1, cv::Scalar(0, 0, 255), 2);
+
 
                 // Combine images with bitwise_or
                 //cv::bitwise_or(yellowMask, blueMask, result);
                 //cv::bitwise_or(redMask, result, result);
                 
-                std::vector<cv::Moments> muYellow(yellowContours.size());
-                std::vector<cv::Moments> muBlue(blueContours.size());
-                std::vector<cv::Moments> muRed(redContours.size());
+                // std::vector<cv::Moments> muYellow(yellowContours.size());
+                // std::vector<cv::Moments> muBlue(blueContours.size());
+                // std::vector<cv::Moments> muRed(redContours.size());
                 
-                std::vector<cv::Point2f> mcYellow(yellowContours.size());
-                std::vector<cv::Point2f> mcBlue(blueContours.size());
-                std::vector<cv::Point2f> mcRed(redContours.size());
+                // std::vector<cv::Point2f> mcYellow(yellowContours.size());
+                // std::vector<cv::Point2f> mcBlue(blueContours.size());
+                // std::vector<cv::Point2f> mcRed(redContours.size());
 
                 // Print timestamp
-                std::string messageTimeStamp = + "ts: " + timeStamp + ";";
-                cv::putText(blurredCroppedImg, messageTimeStamp, cv::Point2f(5,10), cv::FONT_HERSHEY_SIMPLEX, 0.2, cv::Scalar(255, 255, 255), 1);
+                // std::string messageTimeStamp = + "ts: " + timeStamp + ";";
+                // cv::putText(blurredCroppedImg, messageTimeStamp, cv::Point2f(5,10), cv::FONT_HERSHEY_SIMPLEX, 0.2, cv::Scalar(255, 255, 255), 1);
                 
-                int detection_threshold = 10;
+                /*int detection_threshold = 10;
                 
                 if(yellowContours.size()>0){
                     // Define rectangle bounding box around the objects - take first in hierarchy
@@ -259,7 +327,7 @@ int32_t main(int32_t argc, char **argv) {
                             cv::putText(blurredCroppedImg, coords,cv::Point2f(mcRed[0].x+5,50), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 0, 255), 1);
                         }
                     }
-                }
+                }*/
 
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
@@ -268,12 +336,29 @@ int32_t main(int32_t argc, char **argv) {
                     std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
                 }
 
+                //  Frame folder output
+                if (colorChoice == 'b') {
+                    std::string filename = utc_time + "blue" + timeStamp + ".jpg";
+                    writeImageToFolder(blueMask, folderPath, filename);
+                } else {
+                    std::string filename = utc_time + "yellow" + timeStamp + ".jpg";
+                    writeImageToFolder(yellowMask, folderPath, filename);
+                }
+
                 // Display image on your screen.
                 if (VERBOSE) {
                     //cv::imshow(sharedMemory->name().c_str(), img);
                     //cv::imshow("yellow mask", yellowMask);
                     //cv::imshow("blue mask", blueMask);
-                    cv::imshow("cropped blurred image", blurredCroppedImg);
+                    cv::imshow("croppedImg", croppedImg);
+
+                    if (writeChoice == 'y') {
+                        (colorChoice == 'b') ? cv::imshow("blueMask", blueMask) : cv::imshow("yellowMask", yellowMask);
+                    } else {
+                        cv::imshow("blueMask", blueMask);;
+                        cv::imshow("yellowMask", yellowMask);
+                    }
+
                     cv::waitKey(1);
                 }
             }
