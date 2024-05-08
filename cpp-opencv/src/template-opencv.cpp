@@ -17,7 +17,6 @@
 
 // Include the single-file, header-only middleware libcluon to create high-performance microservices
 
-
 #include "cluon-complete.hpp"  // For CLUON messaging framework
 
 // Include the OpenDLV Standard Message Set that contains messages for automotive or robotic applications 
@@ -34,42 +33,44 @@
 
 // Include filesystem header for filesystem operations
 #include <experimental/filesystem>
+#include <sstream>
 
 namespace fs = std::experimental::filesystem;
 
-// Define HSV color ranges for detecting yellow, blue, and red cones:
-// Each pair of Scalars defines the min and max H, S, and V values.
-// cv::Scalar yellowMin = cv::Scalar(20, 60, 70);
-// cv::Scalar yellowMax = cv::Scalar(40, 200, 200);
+// Function to create slider control window for blue masking
+void createSliderWindowBlueMask();
 
-cv::Scalar blueMin = cv::Scalar(100, 50, 30);
-cv::Scalar blueMax = cv::Scalar(120, 255, 253);
+// Function to create slider control window for yellow masking
+void createSliderWindowYellowMask();
 
-cv::Scalar redMin = cv::Scalar(177, 100, 100);
-cv::Scalar redMax = cv::Scalar(179, 190, 253);
+// Retrieves the dimension in one direction (x) of the gaussian kernel (x*x)
+int getGaussianKernelSizeDimension();
 
-bool writeImageToFolder(const cv::Mat& image, const std::string& folderPath, const std::string& filename) {
-    // Create the full path
-    std::string fullPath = folderPath + "/" + filename;
+ // Create color mask of an image
+void createMask(cv::Mat& mask, cv::Scalar minHSV, cv::Scalar maxHSV);
 
-    // Check if the folder exists
-    if (!fs::exists(folderPath)) {
-        // Create the folder if it doesn't exist
-        if (!fs::create_directories(folderPath)) {
-            std::cerr << "Failed to create folder: " << folderPath << std::endl;
-            return false;
-        }
-    }
+// Include info on frame (color, timestamp, blur settings and color settings)
+void putFrameInfo(cv::Mat& img, std::string color, int minH, int minS, int minV, int maxH, int maxS, int maxV, std::string timeStamp);
 
-    // Write the image
-    if (!cv::imwrite(fullPath, image)) {
-        std::cerr << "Failed to write image to file: " << fullPath << std::endl;
-        return false;
-    }
+// Function to write frames to folder
+bool writeImageToFolder(cv::Mat& image, std::string& folderPath, std::string& filename);
 
-    std::cout << "Image saved to: " << fullPath << std::endl;
-    return true;
-}
+// Images for processing
+cv::Mat img, croppedImg, blurredCroppedImg, hsvImage, blueMask, yellowMask;
+
+// Color mask variables
+int blueMinH, blueMaxH, blueMinS, blueMaxS, blueMinV, blueMaxV;
+int yellowMinH, yellowMaxH, yellowMinS, yellowMaxS, yellowMinV, yellowMaxV;
+
+// Blur variables
+int gaussianKernelSize;
+int gaussianKernelSizeSlider = 0, gaussianStandardDeviationX = 0, gaussianStandardDeviationY = 0;
+
+// Contour vectors for each respective (interested-in) cone color
+std::vector<std::vector<cv::Point>> blueContours, yellowContours;
+
+// Contour hierchy within frame - debugging purposes
+std::vector<cv::Vec4i> blueHierchy, yellowHierchy;
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -121,7 +122,7 @@ int32_t main(int32_t argc, char **argv) {
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
-
+            // Frame to folder output choice & color choice for image processing
             char writeChoice;
             char colorChoice;
             std::string folderPath = "output";
@@ -130,6 +131,7 @@ int32_t main(int32_t argc, char **argv) {
                 std::cout << "Write frames to a folder (y | n)?" << std::endl;
                 std::cin >> writeChoice;
             }
+
             if (writeChoice == 'y') {
                 while (!(colorChoice == 'b' || colorChoice == 'y')){
                     std::cout << "Color to process: Blue (b) | Yellow (y)?" << std::endl;
@@ -137,78 +139,36 @@ int32_t main(int32_t argc, char **argv) {
                 }
             }
 
-            int blueMinH{100}, blueMaxH{120}, blueMinS{50}, blueMaxS{255}, blueMinV{30}, blueMaxV{255};
-
-            int yellowMinH{20}, yellowMaxH{40}, yellowMinS{60}, yellowMaxS{200}, yellowMinV{70}, yellowMaxV{200};
-
-            int gaussianKernelSize = 0, gaussianStandardDeviationX = 0, gaussianStandardDeviationY = 0;
-            int gaussianKernelSizeOptions[] = {1, 3, 5, 11, 13};
-            
-            //  Blurring controls
-            cv::namedWindow("Blurring Inspector", CV_WINDOW_AUTOSIZE);
-            cvCreateTrackbar("Kernel Size Mode", "Blurring Inspector", &gaussianKernelSize, 4);
-            cvCreateTrackbar("Standard Deviation X axis", "Blurring Inspector", &gaussianStandardDeviationX, 9999);
-            cvCreateTrackbar("Standard Deviation Y axis", "Blurring Inspector", &gaussianStandardDeviationY, 9999);
-
-            //REFACTOR
-            //  Color controls
             if (writeChoice == 'y') {
                 if (colorChoice == 'b') {
-                    cv::namedWindow("Blue Inspector", cv::WINDOW_AUTOSIZE);
-
-                    //  Sliders for blue color
-                    cv::createTrackbar("Hue (min)", "Blue Inspector", &blueMinH, 179);
-                    cv::createTrackbar("Hue (max)", "Blue Inspector", &blueMaxH, 179);
-                    cv::createTrackbar("Sat (min)", "Blue Inspector", &blueMinS, 255);
-                    cv::createTrackbar("Sat (max)", "Blue Inspector", &blueMaxS, 255);
-                    cv::createTrackbar("Val (min)", "Blue Inspector", &blueMinV, 255);
-                    cv::createTrackbar("Val (max)", "Blue Inspector", &blueMaxV, 255);
+                    // Blue Mask initial thresholds
+                    blueMinH = 100; blueMaxH = 120; blueMinS = 50; blueMaxS = 255; blueMinV = 30; blueMaxV = 255;
+                    createSliderWindowBlueMask();
                 } else {
-                    cv::namedWindow("Yellow Inspector", cv::WINDOW_AUTOSIZE);
-
-                    //  Sliders for yellow color
-                    cv::createTrackbar("Hue (min)", "Yellow Inspector", &yellowMinH, 179);
-                    cv::createTrackbar("Hue (max)", "Yellow Inspector", &yellowMaxH, 179);
-                    cv::createTrackbar("Sat (min)", "Yellow Inspector", &yellowMinS, 255);
-                    cv::createTrackbar("Sat (max)", "Yellow Inspector", &yellowMaxS, 255);
-                    cv::createTrackbar("Val (min)", "Yellow Inspector", &yellowMinV, 255);
-                    cv::createTrackbar("Val (max)", "Yellow Inspector", &yellowMaxV, 255);
-    
+                    // Yellow Mask initial thresholds
+                    yellowMinH = 20; yellowMaxH = 40; yellowMinS = 60; yellowMaxS = 200; yellowMinV = 70; yellowMaxV = 200;
+                    createSliderWindowYellowMask();
                 }
 
             } else {
-                cv::namedWindow("Blue Inspector", cv::WINDOW_AUTOSIZE);
-                
-                //  Sliders for blue color
-                cv::createTrackbar("Hue (min)", "Blue Inspector", &blueMinH, 179);
-                cv::createTrackbar("Hue (max)", "Blue Inspector", &blueMaxH, 179);
-                cv::createTrackbar("Sat (min)", "Blue Inspector", &blueMinS, 255);
-                cv::createTrackbar("Sat (max)", "Blue Inspector", &blueMaxS, 255);
-                cv::createTrackbar("Val (min)", "Blue Inspector", &blueMinV, 255);
-                cv::createTrackbar("Val (max)", "Blue Inspector", &blueMaxV, 255);
-
-
-                cv::namedWindow("Yellow Inspector", cv::WINDOW_AUTOSIZE);
-
-                // Sliders for yellow color
-                cv::createTrackbar("Hue (min)", "Yellow Inspector", &yellowMinH, 179);
-                cv::createTrackbar("Hue (max)", "Yellow Inspector", &yellowMaxH, 179);
-                cv::createTrackbar("Sat (min)", "Yellow Inspector", &yellowMinS, 255);
-                cv::createTrackbar("Sat (max)", "Yellow Inspector", &yellowMaxS, 255);
-                cv::createTrackbar("Val (min)", "Yellow Inspector", &yellowMinV, 255);
-                cv::createTrackbar("Val (max)", "Yellow Inspector", &yellowMaxV, 255);                
-
+                // Blue & Yellow Masks initial thresholds
+                blueMinH = 100; blueMaxH = 120; blueMinS = 50; blueMaxS = 255; blueMinV = 30; blueMaxV = 255;
+                yellowMinH = 20; yellowMaxH = 40; yellowMinS = 60; yellowMaxS = 200; yellowMinV = 70; yellowMaxV = 200;
+                createSliderWindowBlueMask();
+                createSliderWindowYellowMask();
             }
 
+            // Blurring slider controls
+            cv::namedWindow("Blurring Inspector", CV_WINDOW_AUTOSIZE);
+            cvCreateTrackbar("Kernel Size Mode", "Blurring Inspector", &gaussianKernelSizeSlider, 30);
+            cvCreateTrackbar("Standard Deviation X axis", "Blurring Inspector", &gaussianStandardDeviationX, 9999999);
+            cvCreateTrackbar("Standard Deviation Y axis", "Blurring Inspector", &gaussianStandardDeviationY, 9999999);
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
-                // OpenCV data structure to hold an image.
-                cv::Mat img, croppedImg, blurredCroppedImg;
-
+                
                 // Wait for a notification of a new frame.
                 sharedMemory->wait();
-
                 // Lock the shared memory.
                 sharedMemory->lock();
                 {
@@ -216,83 +176,90 @@ int32_t main(int32_t argc, char **argv) {
                     cv::Mat wrapped(HEIGHT, WIDTH, CV_8UC4, sharedMemory->data());
                     img = wrapped.clone();
                 }
-     
                 sharedMemory->unlock();
-
 
                 // Get current time as a time_point object
                 auto now = std::chrono::system_clock::now();
-
                 // Convert time_point object to time_t
                 std::time_t now_t = std::chrono::system_clock::to_time_t(now);
-
                 // Convert time_t to tm as UTC
                 std::tm* now_tm = std::gmtime(&now_t);
-
                 // Prepare output stream
                 std::ostringstream oss;
-
                 // Write time into the output stream
                 oss << std::put_time(now_tm, "%Y-%m-%dT%H:%M:%SZ");
-
                 // Get string from output stream
                 std::string utc_time = oss.str();
-
                 std::string imageMessage = "Now: " + utc_time + ";" + " ts: " + timeStamp + ";";
 
-
-                //  Cropping
+                // Cropping of originally derived image from shared mhsvImageemory
                 croppedImg = img(cv::Rect(0, 255, 640, 144));
 
-                //  Blurring
-                cv::GaussianBlur(croppedImg, blurredCroppedImg, cv::Size(gaussianKernelSizeOptions[gaussianKernelSize], gaussianKernelSizeOptions[gaussianKernelSize]), gaussianStandardDeviationX, gaussianStandardDeviationY);
+                // Retrieve actual dimension in one direction for gaussian blur grid based on gaussianKernelSize Slider
+                gaussianKernelSize = getGaussianKernelSizeDimension();
 
-                // Create matrix for storing blurred image copy
-                cv::Mat hsvImage;
-                // Copy blurred image into new matrix
+                // Blurring of cropped image of originally dervied image from shared memory
+                cv::GaussianBlur(croppedImg, blurredCroppedImg, cv::Size(gaussianKernelSize, gaussianKernelSize), gaussianStandardDeviationX, gaussianStandardDeviationY);
+
+                // Copy blurred image into new matrix (needed to retain original blurredCroppedImg if for later processing on it)
                 blurredCroppedImg.copyTo(hsvImage);
+
                 // Convert the copied image into hsv color space
                 cv::cvtColor(hsvImage, hsvImage, cv::COLOR_BGR2HSV);
+                
+                // For possible performance optimizations (in regards to logic processing), would potentially have writeChoice and colorChoice check-logic defined prior to entering while loop with via eg switch cases for each of these to be mentioned if blocks, of which each case would nonetheless house similar code (at cost of potential readability due to more alike code, as well as increased file size). So the two approaches (ie this and the just now aformentioned one) would ideally (in a software solution intended to customers) need to be empirically tested to determine which is more sutiable for our use case.
 
-                //REFACTOR, UNNECESSARY INITS PUT IN CONDITIONAL
-                // Create masks isolating yellow and blue and find contours to store outlines of cones of each color.
-                cv::Mat yellowMask;
-                std::vector<std::vector<cv::Point>> yellowContours;
-                std::vector<cv::Vec4i> yellowHierchy;
-                cv::inRange(hsvImage, cv::Scalar(yellowMinH, yellowMinS, yellowMinV), cv::Scalar(yellowMaxH, yellowMaxS, yellowMaxV), yellowMask);
-                cv::findContours(yellowMask, yellowContours, yellowHierchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-                cv::drawContours(croppedImg, yellowContours, -1, cv::Scalar(0, 255, 255), 2);
+                // Creating mask, finding & drawing contours, and displaying filter settings on frames.
+                if (writeChoice == 'y') {
+                    if (colorChoice == 'b') {
+                        // Creating one encapsulating function to perform all below functionalites (in the aim of reduced duplicability) would argubly defeat the single responsability principle of that encapsulating function, thus undetermined "correct" code style in this upcoming scenario.
+                        createMask(blueMask, cv::Scalar(blueMinH, blueMinS, blueMinV), cv::Scalar(blueMaxH, blueMaxS, blueMaxV));
 
-                cv::Mat blueMask;
-                std::vector<std::vector<cv::Point>> blueContours;
-                std::vector<cv::Vec4i> blueHierchy;
-                cv::inRange(hsvImage, cv::Scalar(blueMinH, blueMinS, blueMinV), cv::Scalar(blueMaxH, blueMaxS, blueMaxV), blueMask);
-                cv::findContours(blueMask, blueContours, blueHierchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-                cv::drawContours(croppedImg, blueContours, -1, cv::Scalar(255, 0, 0), 2);
+                        cv::findContours(blueMask, blueContours, blueHierchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+                        cv::drawContours(croppedImg, blueContours, -1, cv::Scalar(255, 0, 0), 2);
 
-                //  Post Mask Modfications
-                //  For blue mask
-                std::string blueMaskFrameText = "Blue; " + timeStamp + "; " + utc_time;
-                cv::putText(blueMask, blueMaskFrameText, cv::Point(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+                        putFrameInfo(blueMask, "Blue", blueMinH, blueMinS, blueMinV, blueMaxH, blueMaxS, blueMaxV, timeStamp);
 
-                //  For yellow mask
-                std::string yellowMaskFrameText = "Yellow; " + timeStamp + "; " + utc_time;
-                cv::putText(yellowMask, yellowMaskFrameText, cv::Point(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+                    } else {
 
+                        createMask(yellowMask, cv::Scalar(yellowMinH, yellowMinS, yellowMinV), cv::Scalar(yellowMaxH, yellowMaxS, yellowMaxV));
+
+                        cv::findContours(yellowMask, yellowContours, yellowHierchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+                        cv::drawContours(croppedImg, yellowContours, -1, cv::Scalar(0, 255, 255), 2);
+
+                        putFrameInfo(yellowMask, "Yellow", yellowMinH, yellowMinS, yellowMinV, yellowMaxH, yellowMaxS, yellowMaxV, timeStamp);
+                    }
+
+                } else {
+
+                    createMask(blueMask, cv::Scalar(blueMinH, blueMinS, blueMinV), cv::Scalar(blueMaxH, blueMaxS, blueMaxV));
+
+                    createMask(yellowMask, cv::Scalar(yellowMinH, yellowMinS, yellowMinV), cv::Scalar(yellowMaxH, yellowMaxS, yellowMaxV));
+
+                    cv::findContours(blueMask, blueContours, blueHierchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+                    cv::drawContours(croppedImg, blueContours, -1, cv::Scalar(255, 0, 0), 2);
+
+                    cv::findContours(yellowMask, yellowContours, yellowHierchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+                    cv::drawContours(croppedImg, yellowContours, -1, cv::Scalar(0, 255, 255), 2);
+
+                    putFrameInfo(blueMask, "Blue", blueMinH, blueMinS, blueMinV, blueMaxH, blueMaxS, blueMaxV, timeStamp);
+
+                    putFrameInfo(yellowMask, "Yellow", yellowMinH, yellowMinS, yellowMinV, yellowMaxH, yellowMaxS, yellowMaxV, timeStamp);
+                }
 
                 // for (int i = 0; i < blueHierchy.size(); i++) {
-                //         std::cout << "blue hierchy list number: " << i << std::endl;
-                //     for (int j = 0; j < 4; j++) {
-                //         std::cout << blueHierchy[i][j] << std::endl;
-                //     }
+                //        std::cout << "blue hierchy list number: " << i << std::endl;
+                //    for (int j = 0; j < 4; j++) {
+                //        std::cout << blueHierchy[i][j] << std::endl;
+                //    }
                 // }
 
 
                 // for (int i = 0; i < blueContours.size(); i++) {
-                //         std::cout << "blue countor number: " << i << std::endl;
+                //        std::cout << "blue countor number: " << i << std::endl;
 
-                //         cv::Rect boundingArea = cv::boundingRect(blueContours[i]);
-                //         std::cout << "area: " << boundingArea.width*boundingArea.height << std::endl;
+                //        cv::Rect boundingArea = cv::boundingRect(blueContours[i]);
+                //        std::cout << "area: " << boundingArea.width*boundingArea.height << std::endl;
                 // }
 
                 // std::cout << "" << std::endl; 
@@ -399,30 +366,36 @@ int32_t main(int32_t argc, char **argv) {
                     std::lock_guard<std::mutex> lck(gsrMutex);
                     std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
                 }
+                
+                // For possible performance optimizations (in regards to logic processing), would potentially have writeChoice and colorChoice check-logic defined prior to entering while loop with via eg switch cases for each of these to be mentioned if blocks, of which each case would nonetheless house similar code (at cost of potential readability due to more alike code, as well as increased file size). So the two approaches (ie this and the just now aformentioned one) would ideally (in a software solution intended to customers) need to be empirically tested to determine which is more sutiable for our use case.
+                
+                // Frame to folder output
+                if (writeChoice == 'y') {
 
-                //  Frame folder output
-                if (colorChoice == 'b') {
-                    std::string filename = utc_time + "blue" + timeStamp + ".jpg";
-                    writeImageToFolder(blueMask, folderPath, filename);
-                } else if (colorChoice == 'y'){
-                    std::string filename = utc_time + "yellow" + timeStamp + ".jpg";
-                    writeImageToFolder(yellowMask, folderPath, filename);
+                    bool isWriteSuccess;
+
+                    if (colorChoice == 'b') {
+                        std::string filename = utc_time + "blue" + timeStamp + ".jpg";
+                        isWriteSuccess = writeImageToFolder(blueMask, folderPath, filename);
+                    } else if (colorChoice == 'y'){
+                        std::string filename = utc_time + "yellow" + timeStamp + ".jpg";
+                        isWriteSuccess = writeImageToFolder(yellowMask, folderPath, filename);               
+                    }
+                    if(!isWriteSuccess){
+                        return 1;
+                    }
                 }
 
                 // Display image on your screen.
                 if (VERBOSE) {
-                    //cv::imshow(sharedMemory->name().c_str(), img);
- 
                     cv::imshow("CroppedImg", croppedImg);
                     cv::imshow("Cropped Blurred Image", blurredCroppedImg);
-
                     if (writeChoice == 'y') {
-                        (colorChoice == 'b') ? cv::imshow("blueMask", blueMask) : cv::imshow("yellowMask", yellowMask);
+                        (colorChoice == 'b') ? cv::imshow("Blue Mask", blueMask) : cv::imshow("Yellow Mask", yellowMask);
                     } else {
-                        cv::imshow("blueMask", blueMask);;
-                        cv::imshow("yellowMask", yellowMask);
+                        cv::imshow("Blue Mask", blueMask);;
+                        cv::imshow("Yellow Mask", yellowMask);
                     }
-
                     cv::waitKey(1);
                 }
             }
@@ -430,4 +403,67 @@ int32_t main(int32_t argc, char **argv) {
         retCode = 0;
     }
     return retCode;
+}
+
+
+void createSliderWindowBlueMask() {
+    
+    cv::namedWindow("Blue Masking Inspector", cv::WINDOW_AUTOSIZE);
+    cv::createTrackbar("Hue (min)", "Blue Masking Inspector", &blueMinH, 179);
+    cv::createTrackbar("Hue (max)", "Blue Masking Inspector", &blueMaxH, 179);
+    cv::createTrackbar("Sat (min)", "Blue Masking Inspector", &blueMinS, 255);
+    cv::createTrackbar("Sat (max)", "Blue Masking Inspector", &blueMaxS, 255);
+    cv::createTrackbar("Val (min)", "Blue Masking Inspector", &blueMinV, 255);
+    cv::createTrackbar("Val (max)", "Blue Masking Inspector", &blueMaxV, 255);
+}
+
+void createSliderWindowYellowMask() {
+    
+    cv::namedWindow("Yellow Masking Inspector", cv::WINDOW_AUTOSIZE);
+    cv::createTrackbar("Hue (min)", "Yellow Masking Inspector", &yellowMinH, 179);
+    cv::createTrackbar("Hue (max)", "Yellow Masking Inspector", &yellowMaxH, 179);
+    cv::createTrackbar("Sat (min)", "Yellow Masking Inspector", &yellowMinS, 255);
+    cv::createTrackbar("Sat (max)", "Yellow Masking Inspector", &yellowMaxS, 255);
+    cv::createTrackbar("Val (min)", "Yellow Masking Inspector", &yellowMinV, 255);
+    cv::createTrackbar("Val (max)", "Yellow Masking Inspector", &yellowMaxV, 255);
+}
+
+int getGaussianKernelSizeDimension() {
+    return (2 * gaussianKernelSizeSlider) + 1;
+}
+
+void createMask(cv::Mat& mask, cv::Scalar minHSV, cv::Scalar maxHSV) {
+    cv::inRange(hsvImage, minHSV, maxHSV, mask);
+}
+
+void putFrameInfo(cv::Mat& targetImg, std::string color, int minH, int minS, int minV, int maxH, int maxS, int maxV, std::string timeStamp){
+    
+    std::ostringstream oss;
+
+    oss << color << timeStamp << ", Blur " << gaussianKernelSize << "x" << gaussianKernelSize << ", X-blur: " << gaussianStandardDeviationX << ", Y-blur: " << gaussianStandardDeviationY
+    << ", HL: " << minH << ", SL: " << minS << ", VL: " << minV
+    << ", HH: " << maxH << ", SH: " << maxS << ", VH: " << maxV;
+
+    cv::putText(targetImg, oss.str(), cv::Point(3, 20), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 255, 255), 1);                    
+}
+
+bool writeImageToFolder(cv::Mat& image, std::string& folderPath, std::string& filename) {
+    // Create the full path
+    std::string fullPath = folderPath + "/" + filename;
+
+    // Check if the folder exists
+    if (!fs::exists(folderPath)) {
+        // Create the folder if it doesn't exist
+        if (!fs::create_directories(folderPath)) {
+            std::cerr << "Failed to create folder: " << folderPath << std::endl;
+            return false;
+        }
+    }
+    // Write the image
+    if (!cv::imwrite(fullPath, image)) {
+        std::cerr << "Failed to write image to file: " << fullPath << std::endl;
+        return false;
+    }
+
+    return true;
 }
