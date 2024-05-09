@@ -125,6 +125,7 @@ int32_t main(int32_t argc, char **argv) {
             // Frame to folder output choice & color choice for image processing
             char writeChoice;
             char colorChoice;
+            char pauseOnFrameMode;
             std::string folderPath = "output";
 
             while (!(writeChoice == 'y' || writeChoice == 'n')){
@@ -137,9 +138,7 @@ int32_t main(int32_t argc, char **argv) {
                     std::cout << "Color to process: Blue (b) | Yellow (y)?" << std::endl;
                     std::cin >> colorChoice;
                 }
-            }
 
-            if (writeChoice == 'y') {
                 if (colorChoice == 'b') {
                     // Blue Mask initial thresholds
                     blueMinH = 100; blueMaxH = 120; blueMinS = 50; blueMaxS = 255; blueMinV = 30; blueMaxV = 255;
@@ -156,6 +155,11 @@ int32_t main(int32_t argc, char **argv) {
                 yellowMinH = 20; yellowMaxH = 40; yellowMinS = 60; yellowMaxS = 200; yellowMinV = 70; yellowMaxV = 200;
                 createSliderWindowBlueMask();
                 createSliderWindowYellowMask();
+            }
+
+            while (!(pauseOnFrameMode == 'y' || pauseOnFrameMode == 'n')) {
+                std::cout << "Enable pause-on-frame mode (y | n)?" << std::endl;
+                std::cin >> pauseOnFrameMode;
             }
 
             // Blurring slider controls
@@ -407,7 +411,12 @@ int32_t main(int32_t argc, char **argv) {
                         cv::imshow("Blue Mask", blueMask);;
                         cv::imshow("Yellow Mask", yellowMask);
                     }
-                    cv::waitKey(1);
+
+                    if (pauseOnFrameMode == 'y') {
+                        cv::waitKey(0);
+                    } else {
+                        cv::waitKey(1);
+                    }
                 }
             }
         }
