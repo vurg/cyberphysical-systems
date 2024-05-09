@@ -247,20 +247,31 @@ int32_t main(int32_t argc, char **argv) {
                     putFrameInfo(yellowMask, "Yellow", yellowMinH, yellowMinS, yellowMinV, yellowMaxH, yellowMaxS, yellowMaxV, timeStamp);
                 }
 
-                // for (int i = 0; i < blueHierchy.size(); i++) {
-                //        std::cout << "blue hierchy list number: " << i << std::endl;
-                //    for (int j = 0; j < 4; j++) {
-                //        std::cout << blueHierchy[i][j] << std::endl;
-                //    }
-                // }
+                for (int i = 0; i < blueHierchy.size(); i++) {
+                       std::cout << "blue hierchy list number: " << i << std::endl;
+                   for (int j = 0; j < 4; j++) {
+                       std::cout << blueHierchy[i][j] << std::endl;
+                   }
+                }
+
+                std::cout << std::endl;
+
+                for (int i = 0; i < blueContours.size(); i++) {
+                       std::cout << "blue contour : " << i << " points" << std::endl;
+                   for (int j = 0; j < blueContours[i].size(); j++) {
+                       std::cout << "x: " << blueContours[i][j].x << ", y: " <<  blueContours[i][j].y << std::endl;
+                   }
+                }
+
+                std::cout << std::endl;
 
 
-                // for (int i = 0; i < blueContours.size(); i++) {
-                //        std::cout << "blue countor number: " << i << std::endl;
+                for (int i = 0; i < blueContours.size(); i++) {
+                       std::cout << "blue countor number bounding area: " << i << std::endl;
 
-                //        cv::Rect boundingArea = cv::boundingRect(blueContours[i]);
-                //        std::cout << "area: " << boundingArea.width*boundingArea.height << std::endl;
-                // }
+                       cv::Rect boundingArea = cv::boundingRect(blueContours[i]);
+                       std::cout << "area: " << boundingArea.width*boundingArea.height << std::endl;
+                }
 
                 // std::cout << "" << std::endl; 
 
