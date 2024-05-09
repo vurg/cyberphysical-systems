@@ -304,12 +304,23 @@ int32_t main(int32_t argc, char **argv) {
                 // cv::putText(blurredCroppedImg, messageTimeStamp, cv::Point2f(5,10), cv::FONT_HERSHEY_SIMPLEX, 0.2, cv::Scalar(255, 255, 255), 1);
                 
                 /*int detection_threshold = 10;
-                
-                if(yellowContours.size()>0){
-                    // Define rectangle bounding box around the objects - take first in hierarchy
-                    cv::Rect bounding_rect_yellow = cv::boundingRect(yellowContours[0]);
-                    // Calculate size of detected object
-                    int rect_yellow_area = bounding_rect_yellow.width*bounding_rect_yellow.height;
+
+                int max_yellow_contour_area = 0;  // Stores the maximum area of the yellow contour
+                int index_yellow = -1;  // Initialize to -1 to indicate "no contour found"
+
+                for (int i = 0; i < yellowContours.size(); i++) {
+                    cv::Rect bounding_rect_yellow = cv::boundingRect(yellowContours[i]);
+                    int area = bounding_rect_yellow.width * bounding_rect_yellow.height;  // Calculate the area of the contour
+                    if (area > max_yellow_contour_area) {  // Compare with max area found so far
+                        max_yellow_contour_area = area;  // Update max area
+                        index_yellow = i;  // Update the index of the contour with the max area
+                    }
+                }
+
+                if(index_yellow != -1 && yellowContours.size()>0){
+                    // Define rectangle bounding box around the objects - take largest
+                    cv::Rect bounding_rect_yellow = cv::boundingRect(yellowContours[index_yellow]);
+                    int rect_yellow_area = bounding_rect_yellow.width * bounding_rect_yellow.height;
                     
                     // Check if detected object exceeds detection threshold
                     if (rect_yellow_area > detection_threshold){
@@ -329,7 +340,19 @@ int32_t main(int32_t argc, char **argv) {
                     
                 }
                 
-                if(blueContours.size()>0){
+                int max_blue_contour_area = 0;  // Stores the maximum area of the blue contour
+                int index_blue = -1;  // Initialize to -1 to indicate "no contour found"
+
+                for (int i = 0; i < blueContours.size(); i++) {
+                    cv::Rect bounding_rect_blue = cv::boundingRect(blueContours[i]);
+                    int area = bounding_rect_blue.width * bounding_rect_blue.height;  // Calculate the area of the contour
+                    if (area > max_blue_contour_area) {  // Compare with max area found so far
+                        max_blue_contour_area = area;  // Update max area
+                        index_blue = i;  // Update the index of the contour with the max area
+                    }
+                }
+
+                if(index_blue != -1 && blueContours.size()>0){
                     // Define rectangle bounding box around the objects - take first in hierarchy
                     cv::Rect bounding_rect_blue = cv::boundingRect(blueContours[0]);
                     // Calculate size of detected object
