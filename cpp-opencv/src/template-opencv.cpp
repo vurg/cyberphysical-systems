@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Christian Berger
+ * Copyright (C) 2020  Christian Berger
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,25 +28,40 @@
 
 namespace fs = std::experimental::filesystem;
 
+// Function to create slider control window for blue masking
 void createSliderWindowBlueMask();
+// Function to create slider control window for yellow masking
 void createSliderWindowYellowMask();
+// Retrieves the dimension in one direction (x) of the gaussian kernel (x*x)
 int getGaussianKernelSizeDimension();
+// Create color mask of an image
 void createMask(cv::Mat& mask, cv::Scalar minHSV, cv::Scalar maxHSV);
+// Include info on frame (color, timestamp, blur settings and color settings)
 void putFrameInfo(cv::Mat& img, std::string color, int minH, int minS, int minV, int maxH, int maxS, int maxV, std::string timeStamp);
+// Function to write frames to folder
 bool writeImageToFolder(cv::Mat& image, std::string& folderPath, std::string& filename);
+// Function to process countour
 void processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold);
+// Function to sort countour array and then process
 void sortAndProcessContours(std::vector<std::vector<cv::Point>>& contours, cv::Mat& image, const cv::Scalar& color, int detection_threshold);
 
+// Images for processing
 cv::Mat img, croppedImg, blurredCroppedImg, hsvImage, blueMask, yellowMask;
+// Color mask variables
 int blueMinH, blueMaxH, blueMinS, blueMaxS, blueMinV, blueMaxV;
 int yellowMinH, yellowMaxH, yellowMinS, yellowMaxS, yellowMinV, yellowMaxV;
+// Blur variables
 int gaussianKernelSize;
 int gaussianKernelSizeSlider = 0, gaussianStandardDeviationX = 0, gaussianStandardDeviationY = 0;
+
+// Contour vectors for each respective (interested-in) cone color
 std::vector<std::vector<cv::Point>> blueContours, yellowContours;
+// Contour hierchy within frame - debugging purposes
 std::vector<cv::Vec4i> blueHierchy, yellowHierchy;
 
 int main(int argc, char **argv) {
     int retCode = 1;
+    // Parse the command line parameters as we require the user to specify some mandatory information on startup.
     auto commandlineArguments = cluon::getCommandlineArguments(argc, argv);
     if (commandlineArguments.count("cid") == 0 || commandlineArguments.count("name") == 0 ||
         commandlineArguments.count("width") == 0 || commandlineArguments.count("height") == 0) {
@@ -58,30 +73,41 @@ int main(int argc, char **argv) {
         std::cerr << "         --height: height of the frame" << std::endl;
         std::cerr << "Example: " << argv[0] << " --cid=253 --name=img --width=640 --height=480 --verbose" << std::endl;
     } else {
+        // Extract the values from the command line parameters
         const std::string NAME = commandlineArguments["name"];
         const uint32_t WIDTH = static_cast<uint32_t>(std::stoi(commandlineArguments["width"]));
         const uint32_t HEIGHT = static_cast<uint32_t>(std::stoi(commandlineArguments["height"]));
         const bool VERBOSE = commandlineArguments.count("verbose") != 0;
 
+        // Attach to the shared memory.
         std::unique_ptr<cluon::SharedMemory> sharedMemory(new cluon::SharedMemory{NAME});
         if (sharedMemory && sharedMemory->valid()) {
             std::clog << argv[0] << ": Attached to shared memory '" << sharedMemory->name() << " (" << sharedMemory->size() << " bytes)." << std::endl;
+            // Interface to a running OpenDaVINCI session where network messages are exchanged.
+            // The instance od4 allows you to send and receive messages.
             cluon::OD4Session od4(static_cast<uint16_t>(std::stoi(commandlineArguments["cid"])));
 
             opendlv::proxy::GroundSteeringRequest gsr;
             std::mutex gsrMutex;
             std::string timeStamp;
 
-            auto onGroundSteeringRequest = [&gsr, &gsrMutex, &timeStamp](cluon::data::Envelope &&env) {
+            auto onGroundSteeringRequest = [&gsr, &gsrMutex, &timeStamp](cluon::data::Envelope &&env) {        
+                // The envelope data structure provide further details, such as sampleTimePoint as shown in this test case:
+                // https://github.com/chrberger/libcluon/blob/master/libcluon/testsuites/TestEnvelopeConverter.cpp#L31-L40
                 std::lock_guard<std::mutex> lck(gsrMutex);
-                gsr = cluon::extractMessage<opendlv::proxy::GroundSteeringRequest>(std::move(env));
+                //locks twice, to get image, to get data
+                //CHANGE HERE
+                gsr = cluon::extractMessage<opendlv::proxy::GroundSteeringRequest>(std::move(env));         
+                // std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
                 timeStamp = std::to_string(env.sampleTimeStamp().seconds()) + std::to_string(env.sampleTimeStamp().microseconds());
             };
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
+            // Frame to folder output choice & color choice for image processing
             char writeChoice, colorChoice, pauseOnFrameMode;
-            std::string folderPath = "output";
+            // Approach to use for processing contours
             int approach = 0;
+            std::string folderPath = "output";
 
             while (!(writeChoice == 'y' || writeChoice == 'n')) {
                 std::cout << "Write frames to a folder (y | n)?" << std::endl;
@@ -95,13 +121,16 @@ int main(int argc, char **argv) {
                 }
 
                 if (colorChoice == 'b') {
+                    // Blue Mask initial thresholds
                     blueMinH = 100; blueMaxH = 120; blueMinS = 50; blueMaxS = 255; blueMinV = 30; blueMaxV = 255;
                     createSliderWindowBlueMask();
                 } else {
+                    // Yellow Mask initial thresholds
                     yellowMinH = 20; yellowMaxH = 40; yellowMinS = 60; yellowMaxS = 200; yellowMinV = 70; yellowMaxV = 200;
                     createSliderWindowYellowMask();
                 }
             } else {
+                // Blue & Yellow Masks initial thresholds
                 blueMinH = 100; blueMaxH = 120; blueMinS = 50; blueMaxS = 255; blueMinV = 30; blueMaxV = 255;
                 yellowMinH = 20; yellowMaxH = 40; yellowMinS = 60; yellowMaxS = 200; yellowMinV = 70; yellowMaxV = 200;
                 createSliderWindowBlueMask();
@@ -120,36 +149,56 @@ int main(int argc, char **argv) {
                 std::cin >> approach;
             }
 
+            // Blurring slider controls
             cv::namedWindow("Blurring Inspector", CV_WINDOW_AUTOSIZE);
             cvCreateTrackbar("Kernel Size Mode", "Blurring Inspector", &gaussianKernelSizeSlider, 30);
             cvCreateTrackbar("Standard Deviation X axis", "Blurring Inspector", &gaussianStandardDeviationX, 9999999);
             cvCreateTrackbar("Standard Deviation Y axis", "Blurring Inspector", &gaussianStandardDeviationY, 9999999);
 
+            // Endless loop; end the program by pressing Ctrl-C
             while (od4.isRunning()) {
+                // Wait for a notification of a new frame
                 sharedMemory->wait();
+                // Lock the shared memory.
                 sharedMemory->lock();
                 {
+                    // Copy the pixels from the shared memory into our own data structure.
                     cv::Mat wrapped(HEIGHT, WIDTH, CV_8UC4, sharedMemory->data());
                     img = wrapped.clone();
                 }
                 sharedMemory->unlock();
 
+                // Get current time as a time_point object
                 auto now = std::chrono::system_clock::now();
+                // Convert time_point object to time_t
                 std::time_t now_t = std::chrono::system_clock::to_time_t(now);
+                // Convert time_t to tm as UTC
                 std::tm* now_tm = std::gmtime(&now_t);
+                // Prepare output stream
                 std::ostringstream oss;
+                // Write time into the output stream
                 oss << std::put_time(now_tm, "%Y-%m-%dT%H:%M:%SZ");
+                // Get string from output stream
                 std::string utc_time = oss.str();
                 std::string imageMessage = "Now: " + utc_time + ";" + " ts: " + timeStamp + ";";
 
+                // Cropping of originally derived image from shared mhsvImageemory
                 croppedImg = img(cv::Rect(0, 255, 640, 144));
+                // Retrieve actual dimension in one direction for gaussian blur grid based on gaussianKernelSize Slider
                 gaussianKernelSize = getGaussianKernelSizeDimension();
+                // Blurring of cropped image of originally dervied image from shared memory
                 cv::GaussianBlur(croppedImg, blurredCroppedImg, cv::Size(gaussianKernelSize, gaussianKernelSize), gaussianStandardDeviationX, gaussianStandardDeviationY);
+                // Copy blurred image into new matrix (needed to retain original blurredCroppedImg if for later processing on it)
                 blurredCroppedImg.copyTo(hsvImage);
+                // Convert the copied image into hsv color space
                 cv::cvtColor(hsvImage, hsvImage, cv::COLOR_BGR2HSV);
-
+                
+                // For possible performance optimizations (in regards to logic processing), would potentially have writeChoice and colorChoice check-logic defined prior to entering while loop with via eg switch cases for each of these to be mentioned if blocks, of which each case would nonetheless house similar code (at cost of potential readability due to more alike code, as well as increased file size). So the two approaches (ie this and the just now aformentioned one) would ideally (in a software solution intended to customers) need to be empirically tested to determine which is more sutiable for our use case.
+                
+                // Creating mask, finding & drawing contours, and displaying filter settings on frames.
                 if (writeChoice == 'y') {
                     if (colorChoice == 'b') {
+                        // Creating one encapsulating function to perform all below functionalites (in the aim of reduced duplicability) would argubly defeat the single responsability principle of that encapsulating function, thus undetermined "correct" code style in this upcoming scenario.
                         createMask(blueMask, cv::Scalar(blueMinH, blueMinS, blueMinV), cv::Scalar(blueMaxH, blueMaxS, blueMaxV));
                         cv::findContours(blueMask, blueContours, blueHierchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
                         cv::drawContours(croppedImg, blueContours, -1, cv::Scalar(255, 0, 0), 2);
@@ -240,6 +289,9 @@ int main(int argc, char **argv) {
                 std::lock_guard<std::mutex> lck(gsrMutex);
                 std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
 
+                // For possible performance optimizations (in regards to logic processing), would potentially have writeChoice and colorChoice check-logic defined prior to entering while loop with via eg switch cases for each of these to be mentioned if blocks, of which each case would nonetheless house similar code (at cost of potential readability due to more alike code, as well as increased file size). So the two approaches (ie this and the just now aformentioned one) would ideally (in a software solution intended to customers) need to be empirically tested to determine which is more sutiable for our use case.
+                
+                // Frame to folder output
                 if (writeChoice == 'y') {
                     bool isWriteSuccess;
 
@@ -255,6 +307,7 @@ int main(int argc, char **argv) {
                     }
                 }
 
+                // Display image on your screen.
                 if (VERBOSE) {
                     cv::imshow("CroppedImg", croppedImg);
                     cv::imshow("Cropped Blurred Image", blurredCroppedImg);
@@ -340,13 +393,17 @@ void putFrameInfo(cv::Mat& targetImg, std::string color, int minH, int minS, int
 }
 
 bool writeImageToFolder(cv::Mat& image, std::string& folderPath, std::string& filename) {
+    // Create the full path
     std::string fullPath = folderPath + "/" + filename;
+    // Check if the folder exists
     if (!fs::exists(folderPath)) {
+        // Create the folder if it doesn't exist
         if (!fs::create_directories(folderPath)) {
             std::cerr << "Failed to create folder: " << folderPath << std::endl;
             return false;
         }
     }
+    // Write the image
     if (!cv::imwrite(fullPath, image)) {
         std::cerr << "Failed to write image to file: " << fullPath << std::endl;
         return false;
