@@ -41,7 +41,7 @@ void putFrameInfo(cv::Mat& img, std::string color, int minH, int minS, int minV,
 // Function to write frames to folder
 bool writeImageToFolder(cv::Mat& image, std::string& folderPath, std::string& filename);
 // Function to process countour
-void processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold);
+void processContour(const std::vector<cv::Point>& contour, int area, cv::Mat& image, const cv::Scalar& color, int detection_threshold);
 // Function to sort countour array and then process
 void sortAndProcessContours(std::vector<std::vector<cv::Point>>& contours, cv::Mat& image, const cv::Scalar& color, int detection_threshold);
 
@@ -276,10 +276,10 @@ int main(int argc, char **argv) {
                     }
 
                     if (index_yellow != -1) {
-                        processContour(yellowContours[index_yellow], blurredCroppedImg, cv::Scalar(0, 255, 255), detection_threshold);
+                        processContour(yellowContours[index_yellow], max_yellow_contour_area, blurredCroppedImg, cv::Scalar(0, 255, 255), detection_threshold);
                     }
                     if (index_blue != -1) {
-                        processContour(blueContours[index_blue], blurredCroppedImg, cv::Scalar(255, 0, 0), detection_threshold);
+                        processContour(blueContours[index_blue], max_blue_contour_area, blurredCroppedImg, cv::Scalar(255, 0, 0), detection_threshold);
                     }
                 } else if (approach == 2) {
                     sortAndProcessContours(yellowContours, blurredCroppedImg, cv::Scalar(0, 255, 255), detection_threshold);
@@ -331,9 +331,8 @@ int main(int argc, char **argv) {
     return retCode;
 }
 
-void processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold) {
+void processContour(const std::vector<cv::Point>& contour, int area, cv::Mat& image, const cv::Scalar& color, int detection_threshold) {
     cv::Rect bounding_rect = cv::boundingRect(contour);
-    int area = bounding_rect.width * bounding_rect.height;
     if (area > detection_threshold) {
         cv::rectangle(image, bounding_rect, color, 1);
         cv::Moments mu = cv::moments(contour);
