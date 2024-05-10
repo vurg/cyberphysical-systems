@@ -51,6 +51,7 @@ cv::Scalar redMax = cv::Scalar(179, 190, 253);
 
 // Function declarations
 float generateRandomSteeringAngle(); // (Likely remove for production) placeholder for actual calculations
+void processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold); // Function to process countour
 std::string calculatePercentageDifference(const std::string& calculatedStr, const std::string& actualStr);
 std::string padMicroseconds(const std::string& timeStamp);
 void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &calculatedSteeringAngle, const std::string &actualGroundSteering);
@@ -192,24 +193,14 @@ int32_t main(int32_t argc, char **argv) {
                 std::vector<std::vector<cv::Point>> blueContours;
                 cv::findContours(blueMask, blueContours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
 
-                
-                cv::Mat redMask;
-                cv::inRange(hsvImage, redMin, redMax, redMask);
-                std::vector<std::vector<cv::Point>> redContours;
-                cv::findContours(redMask, redContours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
-                
-
                 // Combine images with bitwise_or
                 //cv::bitwise_or(yellowMask, blueMask, result);
-                //cv::bitwise_or(redMask, result, result);
                 
                 std::vector<cv::Moments> muYellow(yellowContours.size());
                 std::vector<cv::Moments> muBlue(blueContours.size());
-                std::vector<cv::Moments> muRed(redContours.size());
-                
+
                 std::vector<cv::Point2f> mcYellow(yellowContours.size());
                 std::vector<cv::Point2f> mcBlue(blueContours.size());
-                std::vector<cv::Point2f> mcRed(redContours.size());
 
                 // Print timestamp
                 std::string messageTimeStamp = + "ts: " + timeStamp + ";";
@@ -217,76 +208,34 @@ int32_t main(int32_t argc, char **argv) {
                 
                 int detection_threshold = 10;
                 
-                if(yellowContours.size()>0){
-                    // Define rectangle bounding box around the objects - take first in hierarchy
-                    cv::Rect bounding_rect_yellow = cv::boundingRect(yellowContours[0]);
-                    // Calculate size of detected object
-                    int rect_yellow_area = bounding_rect_yellow.width*bounding_rect_yellow.height;
-                    
-                    // Check if detected object exceeds detection threshold
-                    if (rect_yellow_area > detection_threshold){
-                            // Draw bounding box
-                            cv::rectangle(blurredCroppedImg, bounding_rect_yellow, cv::Scalar(0, 255, 255), 1);
-                            // Use moments to calculate center of detected object
-                            muYellow[0] = cv::moments(yellowContours[0]);
-                            if(muYellow[0].m00 !=0){
-                                mcYellow[0] = cv::Point2f(static_cast<float>(muYellow[0].m10 / muYellow[0].m00), static_cast<float>(muYellow[0].m01 / muYellow[0].m00));
-                                cv::circle(blurredCroppedImg, mcYellow[0], 2, cv::Scalar(0, 255, 255), -1);
-                                
-                                // Overlay centroid coordinates on bounding box
-                                std::string coords = "x: " + std::to_string(mcYellow[0].x) + ", y: " + std::to_string(mcYellow[0].y);
-                                cv::putText(blurredCroppedImg, coords, cv::Point2f(mcYellow[0].x+5,50), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 255), 1);
-                            }
-                    }
-                    
-                }
-                
-                if(blueContours.size()>0){
-                    // Define rectangle bounding box around the objects - take first in hierarchy
-                    cv::Rect bounding_rect_blue = cv::boundingRect(blueContours[0]);
-                    // Calculate size of detected object
-                    int rect_blue_area = bounding_rect_blue.width*bounding_rect_blue.height;
-
-                    // Check if detected object exceeds detection threshold
-                    if (rect_blue_area > detection_threshold){
-                        // Draw bounding box
-                        cv::rectangle(blurredCroppedImg, bounding_rect_blue, cv::Scalar(255, 0, 0), 1);                            
-                        // Use moments to calculate center of detected object
-                        muBlue[0] = cv::moments(blueContours[0]);
-                        if(muBlue[0].m00 !=0){
-                            mcBlue[0] = cv::Point2f(static_cast<float>(muBlue[0].m10 / muBlue[0].m00), static_cast<float>(muBlue[0].m01 / muBlue[0].m00));
-                            cv::circle(blurredCroppedImg, mcBlue[0], 2, cv::Scalar(255, 0, 0), -1);
-                        
-                            // Overlay centroid coordinates on bounding box
-                            std::string coords = "x: " + std::to_string(mcBlue[0].x) + ", y: " + std::to_string(mcBlue[0].y);
-                            cv::putText(blurredCroppedImg, coords,cv::Point2f(mcBlue[0].x+5,50), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 0, 0), 1);
-                        }
-                    }
-                }
-                
-                if(redContours.size()>0){
-                    // Define rectangle bounding box around the objects - take first in hierarchy
-                    cv::Rect bounding_rect_red = cv::boundingRect(redContours[0]);
-                    // Calculate size of detected object
-                    int rect_red_area = bounding_rect_red.width*bounding_rect_red.height;
-                    
-                    // Check if detected object exceeds detection threshold
-                    if (rect_red_area > detection_threshold){
-                        // Draw bounding box
-                        cv::rectangle(blurredCroppedImg, bounding_rect_red, cv::Scalar(0, 0, 255), 1);
-                        // Use moments to calculate center of detected object
-                        muRed[0] = cv::moments(redContours[0]);
-                        if(muRed[0].m00 !=0){
-                            mcRed[0] = cv::Point2f(static_cast<float>(muRed[0].m10 / muRed[0].m00), static_cast<float>(muRed[0].m01 / muRed[0].m00));
-                            cv::circle(blurredCroppedImg, mcRed[0], 2, cv::Scalar(0, 0, 255), -1);
-                        
-                            // Overlay centroid coordinates on bounding box
-                            std::string coords = "x: " + std::to_string(mcRed[0].x) + ", y: " + std::to_string(mcRed[0].y);
-                            cv::putText(blurredCroppedImg, coords,cv::Point2f(mcRed[0].x+5,50), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 0, 255), 1);
-                        }
+                int max_yellow_contour_area = 0;
+                int index_yellow = -1;
+                for (int i = 0; i < yellowContours.size(); i++) {
+                    cv::Rect bounding_rect_yellow = cv::boundingRect(yellowContours[i]);
+                    int area = bounding_rect_yellow.width * bounding_rect_yellow.height;
+                    if (area > max_yellow_contour_area) {
+                        max_yellow_contour_area = area;
+                        index_yellow = i;
                     }
                 }
 
+                int max_blue_contour_area = 0;
+                int index_blue = -1;
+                for (int i = 0; i < blueContours.size(); i++) {
+                    cv::Rect bounding_rect_blue = cv::boundingRect(blueContours[i]);
+                    int area = bounding_rect_blue.width * bounding_rect_blue.height;
+                    if (area > max_blue_contour_area) {
+                        max_blue_contour_area = area;
+                        index_blue = i;
+                    }
+                }
+
+                if (index_yellow != -1) {
+                    processContour(yellowContours[index_yellow], blurredCroppedImg, cv::Scalar(0, 255, 255), detection_threshold);
+                }
+                if (index_blue != -1) {
+                    processContour(blueContours[index_blue], blurredCroppedImg, cv::Scalar(255, 0, 0), detection_threshold);
+                }
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
@@ -310,6 +259,22 @@ int32_t main(int32_t argc, char **argv) {
         retCode = 0;
     }
     return retCode;
+}
+
+void processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold) {
+    cv::Rect bounding_rect = cv::boundingRect(contour);
+    int area = bounding_rect.width * bounding_rect.height;
+    if (area > detection_threshold) {
+        cv::rectangle(image, bounding_rect, color, 1);
+        cv::Moments mu = cv::moments(contour);
+        if (mu.m00 != 0) {
+            cv::Point2f mc = cv::Point2f(static_cast<float>(mu.m10 / mu.m00), static_cast<float>(mu.m01 / mu.m00));
+            cv::circle(image, mc, 2, color, -1);
+            std::ostringstream coords;
+            coords << "x: " << mc.x << ", y: " << mc.y;
+            cv::putText(image, coords.str(), cv::Point2f(mc.x + 5, 50), cv::FONT_HERSHEY_SIMPLEX, 0.3, color, 1);
+        }
+    }
 }
 
 float generateRandomSteeringAngle() {
