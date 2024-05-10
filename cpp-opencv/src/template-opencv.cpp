@@ -142,10 +142,11 @@ int main(int argc, char **argv) {
                 std::cin >> pauseOnFrameMode;
             }
 
-            while (!(approach == 1 || approach == 2)) {
+            while (!(approach == 1 || approach == 2 || approach == 3)) {
                 std::cout << "Choose the contour processing approach:\n";
                 std::cout << "1. Direct Iteration\n";
                 std::cout << "2. Sorting Method\n";
+                std::cout << "3. Default (No optimizations)";
                 std::cin >> approach;
             }
 
@@ -351,7 +352,9 @@ void sortAndProcessContours(std::vector<std::vector<cv::Point>>& contours, cv::M
         std::sort(contours.begin(), contours.end(), [](const std::vector<cv::Point>& a, const std::vector<cv::Point>& b) {
             return cv::contourArea(a) > cv::contourArea(b);
         });
-        processContour(contours[0], image, color, detection_threshold);
+        cv::Rect bounding_rect = cv::boundingRect(contours[0]);
+        int area = bounding_rect.width * bounding_rect.height;
+        processContour(contours[0], area, image, color, detection_threshold);
     }
 }
 
