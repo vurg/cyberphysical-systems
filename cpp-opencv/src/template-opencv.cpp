@@ -27,16 +27,33 @@
 #include <chrono>
 #include <iomanip>
 
+// Library for writing plotting data to a data file (CSV)
+#include <fstream>
+
+// (Likely remove for production) Random library for placeholder angle calculation
+#include <random>
+
+#include <string>
+#include <cmath>  // For std::abs
+#include <sstream>  // For std::ostringstream
+#include <iomanip>  // For std::setprecision
+
 // Define HSV color ranges for detecting yellow, blue, and red cones:
 // Each pair of Scalars defines the min and max H, S, and V values.
 cv::Scalar yellowMin = cv::Scalar(20, 60, 70);
 cv::Scalar yellowMax = cv::Scalar(40, 200, 200);
 
 cv::Scalar blueMin = cv::Scalar(100, 50, 30);
-cv::Scalar blueMax = cv::Scalar(120, 255, 255);
+cv::Scalar blueMax = cv::Scalar(120, 255, 253);
 
 cv::Scalar redMin = cv::Scalar(177, 100, 100);
-cv::Scalar redMax = cv::Scalar(179, 190, 255);
+cv::Scalar redMax = cv::Scalar(179, 190, 253);
+
+// Function declarations
+float generateRandomSteeringAngle(); // (Likely remove for production) placeholder for actual calculations
+std::string calculatePercentageDifference(const std::string& calculatedStr, const std::string& actualStr);
+std::string padMicroseconds(const std::string& timeStamp);
+void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &calculatedSteeringAngle, const std::string &actualGroundSteering);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -81,19 +98,26 @@ int32_t main(int32_t argc, char **argv) {
                 //locks twice, to get image, to get data
                 //CHANGE HERE
                 gsr = cluon::extractMessage<opendlv::proxy::GroundSteeringRequest>(std::move(env));
-                std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
+                //std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
 
-                timeStamp = std::to_string(env.sampleTimeStamp().seconds()) + std::to_string(env.sampleTimeStamp().microseconds());
+                timeStamp = std::to_string(env.sampleTimeStamp().seconds()) + padMicroseconds(std::to_string(env.sampleTimeStamp().microseconds()));
             };
 
-            od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
+            // Plotting data file setup (to make sure we dont use old data)
+            std::string filename = "/tmp/plotting_data.csv";
+            std::ofstream outFile;
+            outFile.open(filename, std::ios::out | std::ios::trunc); // Opens and resets existing data file
 
-            int gaussianKernelSize = 3, gaussianStandardDeviationX = 3, gaussianStandardDeviationY = 3;
+            od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
                 cv::Mat img, croppedImg, blurredCroppedImg;
+
+                // Placeholder for calculated steering angle
+                float calculatedSteeringAngleFloat = generateRandomSteeringAngle();
+                std::string calculatedSteeringAngle = std::to_string(calculatedSteeringAngleFloat);
 
                 // Wait for a notification of a new frame.
                 sharedMemory->wait();
@@ -144,10 +168,10 @@ int32_t main(int32_t argc, char **argv) {
                 */
 
                 //  Cropping
-                croppedImg = img(cv::Rect(0, 255, 640, 155));
+                croppedImg = img(cv::Rect(0, 255, 640, 144));
 
                 //  Blurring
-                cv::GaussianBlur(croppedImg, blurredCroppedImg, cv::Size(gaussianKernelSize, gaussianKernelSize), gaussianStandardDeviationX, gaussianStandardDeviationY);
+                cv::GaussianBlur(croppedImg, blurredCroppedImg, cv::Size(101, 101), 2.5);
 
                 // Create matrix for storing blurred image copy
                 cv::Mat hsvImage;
@@ -161,24 +185,123 @@ int32_t main(int32_t argc, char **argv) {
                 cv::Mat yellowMask;
                 cv::inRange(hsvImage, yellowMin, yellowMax, yellowMask);
                 std::vector<std::vector<cv::Point>> yellowContours;
+                cv::findContours(yellowMask, yellowContours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
 
                 cv::Mat blueMask;
                 cv::inRange(hsvImage, blueMin, blueMax, blueMask);
                 std::vector<std::vector<cv::Point>> blueContours;
+                cv::findContours(blueMask, blueContours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
 
+                
                 cv::Mat redMask;
                 cv::inRange(hsvImage, redMin, redMax, redMask);
                 std::vector<std::vector<cv::Point>> redContours;
+                cv::findContours(redMask, redContours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+                
+
+                // Combine images with bitwise_or
+                //cv::bitwise_or(yellowMask, blueMask, result);
+                //cv::bitwise_or(redMask, result, result);
+                
+                std::vector<cv::Moments> muYellow(yellowContours.size());
+                std::vector<cv::Moments> muBlue(blueContours.size());
+                std::vector<cv::Moments> muRed(redContours.size());
+                
+                std::vector<cv::Point2f> mcYellow(yellowContours.size());
+                std::vector<cv::Point2f> mcBlue(blueContours.size());
+                std::vector<cv::Point2f> mcRed(redContours.size());
+
+                // Print timestamp
+                std::string messageTimeStamp = + "ts: " + timeStamp + ";";
+                cv::putText(blurredCroppedImg, messageTimeStamp, cv::Point2f(5,10), cv::FONT_HERSHEY_SIMPLEX, 0.2, cv::Scalar(255, 255, 255), 1);
+                
+                int detection_threshold = 10;
+                
+                if(yellowContours.size()>0){
+                    // Define rectangle bounding box around the objects - take first in hierarchy
+                    cv::Rect bounding_rect_yellow = cv::boundingRect(yellowContours[0]);
+                    // Calculate size of detected object
+                    int rect_yellow_area = bounding_rect_yellow.width*bounding_rect_yellow.height;
+                    
+                    // Check if detected object exceeds detection threshold
+                    if (rect_yellow_area > detection_threshold){
+                            // Draw bounding box
+                            cv::rectangle(blurredCroppedImg, bounding_rect_yellow, cv::Scalar(0, 255, 255), 1);
+                            // Use moments to calculate center of detected object
+                            muYellow[0] = cv::moments(yellowContours[0]);
+                            if(muYellow[0].m00 !=0){
+                                mcYellow[0] = cv::Point2f(static_cast<float>(muYellow[0].m10 / muYellow[0].m00), static_cast<float>(muYellow[0].m01 / muYellow[0].m00));
+                                cv::circle(blurredCroppedImg, mcYellow[0], 2, cv::Scalar(0, 255, 255), -1);
+                                
+                                // Overlay centroid coordinates on bounding box
+                                std::string coords = "x: " + std::to_string(mcYellow[0].x) + ", y: " + std::to_string(mcYellow[0].y);
+                                cv::putText(blurredCroppedImg, coords, cv::Point2f(mcYellow[0].x+5,50), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 255), 1);
+                            }
+                    }
+                    
+                }
+                
+                if(blueContours.size()>0){
+                    // Define rectangle bounding box around the objects - take first in hierarchy
+                    cv::Rect bounding_rect_blue = cv::boundingRect(blueContours[0]);
+                    // Calculate size of detected object
+                    int rect_blue_area = bounding_rect_blue.width*bounding_rect_blue.height;
+
+                    // Check if detected object exceeds detection threshold
+                    if (rect_blue_area > detection_threshold){
+                        // Draw bounding box
+                        cv::rectangle(blurredCroppedImg, bounding_rect_blue, cv::Scalar(255, 0, 0), 1);                            
+                        // Use moments to calculate center of detected object
+                        muBlue[0] = cv::moments(blueContours[0]);
+                        if(muBlue[0].m00 !=0){
+                            mcBlue[0] = cv::Point2f(static_cast<float>(muBlue[0].m10 / muBlue[0].m00), static_cast<float>(muBlue[0].m01 / muBlue[0].m00));
+                            cv::circle(blurredCroppedImg, mcBlue[0], 2, cv::Scalar(255, 0, 0), -1);
+                        
+                            // Overlay centroid coordinates on bounding box
+                            std::string coords = "x: " + std::to_string(mcBlue[0].x) + ", y: " + std::to_string(mcBlue[0].y);
+                            cv::putText(blurredCroppedImg, coords,cv::Point2f(mcBlue[0].x+5,50), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 0, 0), 1);
+                        }
+                    }
+                }
+                
+                if(redContours.size()>0){
+                    // Define rectangle bounding box around the objects - take first in hierarchy
+                    cv::Rect bounding_rect_red = cv::boundingRect(redContours[0]);
+                    // Calculate size of detected object
+                    int rect_red_area = bounding_rect_red.width*bounding_rect_red.height;
+                    
+                    // Check if detected object exceeds detection threshold
+                    if (rect_red_area > detection_threshold){
+                        // Draw bounding box
+                        cv::rectangle(blurredCroppedImg, bounding_rect_red, cv::Scalar(0, 0, 255), 1);
+                        // Use moments to calculate center of detected object
+                        muRed[0] = cv::moments(redContours[0]);
+                        if(muRed[0].m00 !=0){
+                            mcRed[0] = cv::Point2f(static_cast<float>(muRed[0].m10 / muRed[0].m00), static_cast<float>(muRed[0].m01 / muRed[0].m00));
+                            cv::circle(blurredCroppedImg, mcRed[0], 2, cv::Scalar(0, 0, 255), -1);
+                        
+                            // Overlay centroid coordinates on bounding box
+                            std::string coords = "x: " + std::to_string(mcRed[0].x) + ", y: " + std::to_string(mcRed[0].y);
+                            cv::putText(blurredCroppedImg, coords,cv::Point2f(mcRed[0].x+5,50), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 0, 255), 1);
+                        }
+                    }
+                }
+
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
                     std::lock_guard<std::mutex> lck(gsrMutex);
-                    std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
+                    std::string actualGroundSteering = std::to_string(gsr.groundSteering());
+                    //std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
+                    std::cout << "group_21;" << timeStamp << ";" << calculatedSteeringAngle << ";" << actualGroundSteering << ";Percentage Difference: " << calculatePercentageDifference(calculatedSteeringAngle,actualGroundSteering) <<  std::endl;
+                    writeDataEntry(filename, timeStamp, calculatedSteeringAngle, actualGroundSteering);
                 }
 
                 // Display image on your screen.
                 if (VERBOSE) {
-                    cv::imshow(sharedMemory->name().c_str(), img);
+                    //cv::imshow(sharedMemory->name().c_str(), img);
+                    //cv::imshow("yellow mask", yellowMask);
+                    //cv::imshow("blue mask", blueMask);
                     cv::imshow("cropped blurred image", blurredCroppedImg);
                     cv::waitKey(1);
                 }
@@ -189,3 +312,52 @@ int32_t main(int32_t argc, char **argv) {
     return retCode;
 }
 
+float generateRandomSteeringAngle() {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_real_distribution<> distr(-0.22, 0.22); // Random number between -0.22 and +0.22
+    return static_cast<float>(distr(gen));
+}
+
+// Function below generated by LLM*
+std::string calculatePercentageDifference(const std::string& calculatedStr, const std::string& actualStr) {
+    double calculated = std::stod(calculatedStr);
+    double actual = std::stod(actualStr);
+
+    if (actual == 0) {
+        return (calculated == 0) ? "0.0%" : "Undefined";  // Handle division by zero
+    }
+
+    double difference = ((calculated - actual) / actual) * 100.0;
+
+    // Format the result to a string with a percentage sign
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(1) << difference << '%';
+    return oss.str();
+}
+
+std::string padMicroseconds(const std::string& timeStamp) { // Note: this function is specifically for fixing truncation in MICROSECONDS ONLY
+    int requiredLength = 6;
+    int currentLength = timeStamp.length();
+    if (currentLength < requiredLength) { // If the timestamp is shorter than it should be
+        int zerosToAdd = requiredLength - currentLength; // Figure out how many zeros need to be added
+        std::string padding(zerosToAdd, '0');
+        return padding + timeStamp; // Add padding BEFORE the timestamp
+    }
+    return timeStamp; // If the timestamp is already 6 characters, just return it as normal
+}
+
+// Function that is called every frame to write the plotting data
+// Note: This function requires that the necessary file creation and cleanup is done at the beginning of main
+void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &calculatedSteeringAngle, const std::string &actualGroundSteering) {
+    std::ofstream file;
+    file.open(filename, std::ios_base::app); // opens data file
+
+    if(file.is_open()) {
+        // Writes data to file
+        file << timeStamp << "," << calculatedSteeringAngle << "," << actualGroundSteering << "\n";
+        file.close(); // Closes file
+    } else {
+        std::cout << "Failed to open data file: " << filename << std::endl;
+    }
+}
