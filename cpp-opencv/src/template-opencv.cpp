@@ -51,7 +51,7 @@ cv::Scalar redMax = cv::Scalar(179, 190, 253);
 
 // Function declarations
 float generateRandomSteeringAngle(); // (Likely remove for production) placeholder for actual calculations
-void processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold); // Function to process countour
+void processContour(const std::vector<cv::Point>& contour, int area, cv::Mat& image, const cv::Scalar& color, int detection_threshold); // Function to process countour
 std::string calculatePercentageDifference(const std::string& calculatedStr, const std::string& actualStr);
 std::string padMicroseconds(const std::string& timeStamp);
 void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &calculatedSteeringAngle, const std::string &actualGroundSteering);
@@ -231,10 +231,10 @@ int32_t main(int32_t argc, char **argv) {
                 }
 
                 if (index_yellow != -1) {
-                    processContour(yellowContours[index_yellow], blurredCroppedImg, cv::Scalar(0, 255, 255), detection_threshold);
+                    processContour(yellowContours[index_yellow], max_yellow_contour_area, blurredCroppedImg, cv::Scalar(0, 255, 255), detection_threshold);
                 }
                 if (index_blue != -1) {
-                    processContour(blueContours[index_blue], blurredCroppedImg, cv::Scalar(255, 0, 0), detection_threshold);
+                    processContour(blueContours[index_blue], max_blue_contour_area, blurredCroppedImg, cv::Scalar(255, 0, 0), detection_threshold);
                 }
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
@@ -261,9 +261,8 @@ int32_t main(int32_t argc, char **argv) {
     return retCode;
 }
 
-void processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold) {
+void processContour(const std::vector<cv::Point>& contour, int area, cv::Mat& image, const cv::Scalar& color, int detection_threshold) {
     cv::Rect bounding_rect = cv::boundingRect(contour);
-    int area = bounding_rect.width * bounding_rect.height;
     if (area > detection_threshold) {
         cv::rectangle(image, bounding_rect, color, 1);
         cv::Moments mu = cv::moments(contour);
