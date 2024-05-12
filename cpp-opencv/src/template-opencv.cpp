@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
                 std::cout << "Choose the contour processing approach:\n";
                 std::cout << "1. Direct Iteration\n";
                 std::cout << "2. Sorting Method\n";
-                std::cout << "3. Default (No optimizations)";
+                std::cout << "3. Default (No optimizations)\n";
                 std::cin >> approach;
             }
 
@@ -285,6 +285,53 @@ int main(int argc, char **argv) {
                 } else if (approach == 2) {
                     sortAndProcessContours(yellowContours, blurredCroppedImg, cv::Scalar(0, 255, 255), detection_threshold);
                     sortAndProcessContours(blueContours, blurredCroppedImg, cv::Scalar(255, 0, 0), detection_threshold);
+                } else if (approach == 3) {
+                    if(yellowContours.size()>0){
+                    // Define rectangle bounding box around the objects - take first in hierarchy
+                    cv::Rect bounding_rect_yellow = cv::boundingRect(yellowContours[0]);
+                    // Calculate size of detected object
+                    int rect_yellow_area = bounding_rect_yellow.width*bounding_rect_yellow.height;
+                    
+                    // Check if detected object exceeds detection threshold
+                    if (rect_yellow_area > detection_threshold){
+                            // Draw bounding box
+                            cv::rectangle(blurredCroppedImg, bounding_rect_yellow, cv::Scalar(0, 255, 255), 1);
+                            // Use moments to calculate center of detected object
+                            muYellow[0] = cv::moments(yellowContours[0]);
+                            if(muYellow[0].m00 !=0){
+                                mcYellow[0] = cv::Point2f(static_cast<float>(muYellow[0].m10 / muYellow[0].m00), static_cast<float>(muYellow[0].m01 / muYellow[0].m00));
+                                cv::circle(blurredCroppedImg, mcYellow[0], 2, cv::Scalar(0, 255, 255), -1);
+                                
+                                // Overlay centroid coordinates on bounding box
+                                std::string coords = "x: " + std::to_string(mcYellow[0].x) + ", y: " + std::to_string(mcYellow[0].y);
+                                cv::putText(blurredCroppedImg, coords, cv::Point2f(mcYellow[0].x+5,50), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(0, 255, 255), 1);
+                            }
+                    }
+                    
+                }
+                
+                if(blueContours.size()>0){
+                    // Define rectangle bounding box around the objects - take first in hierarchy
+                    cv::Rect bounding_rect_blue = cv::boundingRect(blueContours[0]);
+                    // Calculate size of detected object
+                    int rect_blue_area = bounding_rect_blue.width*bounding_rect_blue.height;
+
+                    // Check if detected object exceeds detection threshold
+                    if (rect_blue_area > detection_threshold){
+                        // Draw bounding box
+                        cv::rectangle(blurredCroppedImg, bounding_rect_blue, cv::Scalar(255, 0, 0), 1);                            
+                        // Use moments to calculate center of detected object
+                        muBlue[0] = cv::moments(blueContours[0]);
+                        if(muBlue[0].m00 !=0){
+                            mcBlue[0] = cv::Point2f(static_cast<float>(muBlue[0].m10 / muBlue[0].m00), static_cast<float>(muBlue[0].m01 / muBlue[0].m00));
+                            cv::circle(blurredCroppedImg, mcBlue[0], 2, cv::Scalar(255, 0, 0), -1);
+                        
+                            // Overlay centroid coordinates on bounding box
+                            std::string coords = "x: " + std::to_string(mcBlue[0].x) + ", y: " + std::to_string(mcBlue[0].y);
+                            cv::putText(blurredCroppedImg, coords,cv::Point2f(mcBlue[0].x+5,50), cv::FONT_HERSHEY_SIMPLEX, 0.3, cv::Scalar(255, 0, 0), 1);
+                        }
+                    }
+                }
                 }
 
                 std::lock_guard<std::mutex> lck(gsrMutex);
