@@ -1,4 +1,9 @@
-/*
+/* Title: Steering Actuator Microservice for Autonomous Car
+ * Authors: Nasit Vurgun, Sam Hardingham, Kai Rowley, Daniel van den Heuvel
+ * Institution: University of Gothenburg, Sweden
+ * Course: DIT638/DIT639 (2024), taught by Prof. Christian Berger
+ * 
+ * Template Code provided by:
  * Copyright (C) 2020  Christian Berger
  *
  * This program is free software: you can redistribute it and/or modify
@@ -63,8 +68,8 @@ float error = 0.0;              // absolute error
 int CW = 0;                     // positive if clockwise
 
 // Position of Cones - used in Steering Calculation
-cv::Point2f midBlue(0.0, 0.0);     // center of rect containing blue cone
 cv::Point2f midYellow(0.0, 0.0);   // center of rect containing yellow cone
+cv::Point2f midBlue(0.0, 0.0);     // center of rect containing blue cone
 
 // Comparing Calculated Steering Wheel Angle with Ground Truth
 int totalFrames = 0;            // number of non-zero steering frames
@@ -82,7 +87,7 @@ cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
 
-    // Write to file
+    // Write to file (disabled by default)
     //std::string filename = "/tmp/plotting_data.csv";
     //std::ofstream outFile;
     //outFile.open(filename, std::ios::out | std::ios::trunc); // Opens and resets existing data file
@@ -133,7 +138,7 @@ int32_t main(int32_t argc, char **argv) {
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
-            // Ultrasound Sensor
+            // Ultrasound Sensor Readings
             opendlv::proxy::DistanceReading ultrasound;
             std::mutex ultrasoundMutex;
             std::string timeStampUS;
@@ -149,7 +154,7 @@ int32_t main(int32_t argc, char **argv) {
 
             od4.dataTrigger(opendlv::proxy::DistanceReading::ID(), onDistanceReading);
 
-            // Angular Velocity
+            // Angular Velocity Sensor Readings
             opendlv::proxy::AngularVelocityReading angularVelocity;
             std::mutex angularMutex;
             std::string timeStampAngularVelocity;
@@ -204,14 +209,9 @@ int32_t main(int32_t argc, char **argv) {
                 std::vector<std::vector<cv::Point>> blueContours;
                 cv::findContours(blueMask, blueContours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
 
-                // Combine images with bitwise_or
-                //cv::bitwise_or(yellowMask, blueMask, result);
-                
+                // Initialize vectors to save contours from image detection
                 std::vector<cv::Moments> muYellow(yellowContours.size());
                 std::vector<cv::Moments> muBlue(blueContours.size());
-                
-                std::vector<cv::Point2f> mcYellow(yellowContours.size());
-                std::vector<cv::Point2f> mcBlue(blueContours.size());
 
                 // Print timestamp
                 std::string messageTimeStamp = + "ts: " + timeStamp + ";";
@@ -248,17 +248,19 @@ int32_t main(int32_t argc, char **argv) {
 
                 // Assign midpoint to contour rect
                 if (index_yellow != -1) {
+                    // Set yellowCone detection flag to 1
                     yellowCone = 1;
+                    // Save midpoint of yellow cone contour
                     midYellow = processContour(yellowContours[index_yellow], blurredCroppedImg, cv::Scalar(0, 255, 255), detection_threshold);
                 }
 
                 // Assign midpoint to contour rect
                 if (index_blue != -1) {
+                    // Set blueCone detection flag to 1
                     blueCone = 1;
+                    // Save midpoint of blue cone contour
                     midBlue = processContour(blueContours[index_blue], blurredCroppedImg, cv::Scalar(255, 0, 0), detection_threshold);
                 }
-
-                /****************************************************************************************/
 
                 /****************** STEERING CALCULATION **********************************************/
                 // Calculate steering angle (not optimized)
@@ -269,11 +271,11 @@ int32_t main(int32_t argc, char **argv) {
                     }
                 }
 
-                // Steering function (arctan)
+                // Appling steering function to angular velocity Z sensor reading
                 steeringWheelAngle = steering_function(angularVelocityZ);
                 
                 
-                // Apply offsets
+                // Apply offsets - based on trends observed from image analysis
                 if(CW<0){
                     // Case: CCW
                     if(midBlue.x<500){
@@ -305,7 +307,6 @@ int32_t main(int32_t argc, char **argv) {
                 } else if (steeringWheelAngle < -0.15f) {
                     steeringWheelAngle = -0.22f;
                 }
-                
 
                 /************** COMPARE TO ACTUAL VALUE OF STEERING ANGLE *******************************/
                 // Check the value of steering angle
@@ -357,9 +358,7 @@ int32_t main(int32_t argc, char **argv) {
                 // Display image on your screen.
                 if (VERBOSE) {
                     //cv::imshow(sharedMemory->name().c_str(), img);
-                    //cv::imshow("yellow mask", yellowMask);
-                    //cv::imshow("blue mask", blueMask);
-                    cv::imshow("cropped blurred image", blurredCroppedImg);
+                    cv::imshow("SteeringView - Group_21 Microservice", blurredCroppedImg);
                     cv::waitKey(1);
                 }
             }
@@ -370,17 +369,18 @@ int32_t main(int32_t argc, char **argv) {
 }
 
 
-// Define the steering function with coefficients included
+// Define the steering function from curve fitting
 double steering_function(double X) {
     // Coefficients
-    double a = 0.14973124;
-    double b = 0.02949003;
-    double c = -0.00177955;
+    double a = 0.14973124;  // approximately half of steering range
+    double b = 0.02949003;  // scaling factor for angular velocity Z
+    double c = -0.00177955; // this can even be zero!
 
     // Calculate and return the result
     return a * std::atan(b * X) + c;
 }
 
+// Function to process contours -- finds midpoint and draws box around cone
 cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold) {
     cv::Rect bounding_rect = cv::boundingRect(contour);
     int area = bounding_rect.width * bounding_rect.height;
@@ -396,6 +396,7 @@ cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image
             cv::putText(image, coords.str(), cv::Point2f(mc.x + 5, 50), cv::FONT_HERSHEY_SIMPLEX, 0.3, color, 1);
         }
     }
+    // returns center x,y coordinate of contour rect
     return mc;
 }
 
