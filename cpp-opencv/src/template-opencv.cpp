@@ -341,7 +341,7 @@ int32_t main(int32_t argc, char **argv) {
                     
                     // Print percent correct
                     percentCorrect = (static_cast<float>(totalCorrect) / totalFrames * 100.0f);
-                    std::cout << "Steering Frames: " << totalFrames << " Correct: "<< percentCorrect << "%" << std::endl;
+                    //std::cout << "Steering Frames: " << totalFrames << " Correct: "<< percentCorrect << "%" << std::endl;
                 }
 
                 //writeDataEntry(filename, timeStamp, calculatedSteeringAngle, actualGroundSteering);
