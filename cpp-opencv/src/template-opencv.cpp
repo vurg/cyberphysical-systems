@@ -82,7 +82,7 @@ cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image
 
 // Utilities (mainly for testing)
 //std::string padMicroseconds(const std::string& timeStamp);
-//void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &calculatedSteeringAngle, const std::string &actualGroundSteering);
+//void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &steeringWheelAngleAngle, const std::string &actual_steering);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -343,9 +343,10 @@ int32_t main(int32_t argc, char **argv) {
                     // Print percent correct
                     percentCorrect = (static_cast<float>(totalCorrect) / totalFrames * 100.0f);
                     //std::cout << "Steering Frames: " << totalFrames << " Correct: "<< percentCorrect << "%" << std::endl;
+                    //std::cout << steeringWheelAngle << "," << actual_steering << std::endl;
                 }
 
-                //writeDataEntry(filename, timeStamp, calculatedSteeringAngle, actualGroundSteering);
+                //writeDataEntry(filename, timeStamp, steeringWheelAngleAngle, actual_steering);
                 
                 /****************************************************************************************/
                 
@@ -414,13 +415,13 @@ std::string padMicroseconds(const std::string& timeStamp) { // Note: this functi
 
 // Function that is called every frame to write the plotting data
 // Note: This function requires that the necessary file creation and cleanup is done at the beginning of main
-void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &calculatedSteeringAngle, const std::string &actualGroundSteering) {
+void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &steeringWheelAngleAngle, const std::string &actual_steering) {
     std::ofstream file;
     file.open(filename, std::ios_base::app); // opens data file
 
     if(file.is_open()) {
         // Writes data to file
-        file << timeStamp << "," << calculatedSteeringAngle << "," << actualGroundSteering << "\n";
+        file << timeStamp << "," << steeringWheelAngleAngle << "," << actual_steering << "\n";
         file.close(); // Closes file
     } else {
         std::cout << "Failed to open data file: " << filename << std::endl;
