@@ -1,4 +1,9 @@
-/*
+/* Title: Steering Actuator Microservice for Autonomous Car
+ * Authors: Nasit Vurgun, Sam Hardingham, Kai Rowley, Daniel van den Heuvel
+ * Institution: University of Gothenburg, Sweden
+ * Course: DIT638/DIT639 (2024), taught by Prof. Christian Berger
+ * 
+ * Template Code provided by:
  * Copyright (C) 2020  Christian Berger
  *
  * This program is free software: you can redistribute it and/or modify
@@ -24,40 +29,69 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include <chrono>
-#include <iomanip>
-
-// Library for writing plotting data to a data file (CSV)
-#include <fstream>
-
-// (Likely remove for production) Random library for placeholder angle calculation
-#include <random>
-
-#include <string>
-#include <cmath>  // For std::abs
+// Other utility libraries
+#include <chrono>   // For timing
+#include <iomanip>  // For io
+#include <fstream>  // Library for writing plotting data to a data file (CSV)
+#include <string>   // For strings
+#include <cmath>    // For std::abs, math
 #include <sstream>  // For std::ostringstream
-#include <iomanip>  // For std::setprecision
+
+// GLOBAL VARIABLES:
+// OpenCV data structure to hold an image.
+cv::Mat croppedImg, blurredCroppedImg, hsvImage;
+
+// Cropping rectangle definition of the shared memory img
+cv::Rect roi = cv::Rect(0, 255, 640, 144);
 
 // Define HSV color ranges for detecting yellow, blue, and red cones:
 // Each pair of Scalars defines the min and max H, S, and V values.
 cv::Scalar yellowMin = cv::Scalar(20, 60, 70);
 cv::Scalar yellowMax = cv::Scalar(40, 200, 200);
-
 cv::Scalar blueMin = cv::Scalar(100, 50, 30);
 cv::Scalar blueMax = cv::Scalar(120, 255, 253);
 
-cv::Scalar redMin = cv::Scalar(177, 100, 100);
-cv::Scalar redMax = cv::Scalar(179, 190, 253);
+// Sensor variables
+float distanceUS = 0.0;         // Ultrasound sensor reading
+float angularVelocityZ = 0.0;   // Angular velocity Z sensor reading
+
+// Object Detection Variables
+int yellowCone = 0;             // yellow cone found
+int blueCone = 0;               // blue cone found
+
+// Steering Wheel Angle Related Variables
+float steeringWheelAngle = 0.0; // calculated steering wheel angle
+float actual_steering = 0.0;    // ground truth
+float error = 0.0;              // absolute error
+
+// Clockwise vs Counterclockwise counter
+int CW = 0;                     // positive if clockwise
+
+// Position of Cones - used in Steering Calculation
+cv::Point2f midYellow(0.0, 0.0);   // center of rect containing yellow cone
+cv::Point2f midBlue(0.0, 0.0);     // center of rect containing blue cone
+
+// Comparing Calculated Steering Wheel Angle with Ground Truth
+int totalFrames = 0;            // number of non-zero steering frames
+int totalCorrect = 0;           // number of correct steering frames
+float percentCorrect = 0.0;     // % of frames within 25% of actual steering value
 
 // Function declarations
-float generateRandomSteeringAngle(); // (Likely remove for production) placeholder for actual calculations
-void processContour(const std::vector<cv::Point>& contour, int area, cv::Mat& image, const cv::Scalar& color, int detection_threshold); // Function to process countour
-std::string calculatePercentageDifference(const std::string& calculatedStr, const std::string& actualStr);
-std::string padMicroseconds(const std::string& timeStamp);
-void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &calculatedSteeringAngle, const std::string &actualGroundSteering);
+double steering_function(double X); // Steering Function
+cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold);
+
+// Utilities (mainly for testing)
+//std::string padMicroseconds(const std::string& timeStamp);
+//void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &steeringWheelAngleAngle, const std::string &actual_steering);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
+
+    // Write to file (disabled by default)
+    //std::string filename = "/tmp/plotting_data.csv";
+    //std::ofstream outFile;
+    //outFile.open(filename, std::ios::out | std::ios::trunc); // Opens and resets existing data file
+
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
     auto commandlineArguments = cluon::getCommandlineArguments(argc, argv);
     if ( (0 == commandlineArguments.count("cid")) ||
@@ -100,25 +134,43 @@ int32_t main(int32_t argc, char **argv) {
                 //CHANGE HERE
                 gsr = cluon::extractMessage<opendlv::proxy::GroundSteeringRequest>(std::move(env));
                 //std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
-
-                timeStamp = std::to_string(env.sampleTimeStamp().seconds()) + padMicroseconds(std::to_string(env.sampleTimeStamp().microseconds()));
             };
-
-            // Plotting data file setup (to make sure we dont use old data)
-            std::string filename = "/tmp/plotting_data.csv";
-            std::ofstream outFile;
-            outFile.open(filename, std::ios::out | std::ios::trunc); // Opens and resets existing data file
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
+            // Ultrasound Sensor Readings
+            opendlv::proxy::DistanceReading ultrasound;
+            std::mutex ultrasoundMutex;
+            std::string timeStampUS;
+            auto onDistanceReading = [&ultrasound, &ultrasoundMutex, &distanceUS, &timeStampUS](cluon::data::Envelope &&env)
+            {
+                std::lock_guard<std::mutex> lck(ultrasoundMutex);
+                ultrasound = cluon::extractMessage<opendlv::proxy::DistanceReading>(std::move(env));
+                if (env.senderStamp() == 0)
+                {
+                    distanceUS = ultrasound.distance();
+                }
+            };
+
+            od4.dataTrigger(opendlv::proxy::DistanceReading::ID(), onDistanceReading);
+
+            // Angular Velocity Sensor Readings
+            opendlv::proxy::AngularVelocityReading angularVelocity;
+            std::mutex angularMutex;
+            std::string timeStampAngularVelocity;
+            auto onAngularVelocityReading = [&angularVelocity, &angularMutex, &angularVelocityZ, &timeStampAngularVelocity](cluon::data::Envelope &&env)
+            {
+                std::lock_guard<std::mutex> lck(angularMutex);
+                angularVelocity = cluon::extractMessage<opendlv::proxy::AngularVelocityReading>(std::move(env));
+                    angularVelocityZ = angularVelocity.angularVelocityZ();
+                
+            };
+
+            od4.dataTrigger(opendlv::proxy::AngularVelocityReading::ID(), onAngularVelocityReading);
+            
+
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
-                // OpenCV data structure to hold an image.
-                cv::Mat img, croppedImg, blurredCroppedImg;
-
-                // Placeholder for calculated steering angle
-                float calculatedSteeringAngleFloat = generateRandomSteeringAngle();
-                std::string calculatedSteeringAngle = std::to_string(calculatedSteeringAngleFloat);
 
                 // Wait for a notification of a new frame.
                 sharedMemory->wait();
@@ -128,58 +180,22 @@ int32_t main(int32_t argc, char **argv) {
                 {
                     // Copy the pixels from the shared memory into our own data structure.
                     cv::Mat wrapped(HEIGHT, WIDTH, CV_8UC4, sharedMemory->data());
-                    img = wrapped.clone();
+                    
+                    // Crop image here
+                    croppedImg = wrapped(roi).clone();
                 }
+                // Get the time for each image
+                std::pair<bool, cluon::data::TimeStamp> tStamp = sharedMemory->getTimeStamp();
+                // Convert the time to microseconds
+                std::string timeStamp = std::to_string(cluon::time::toMicroseconds(tStamp.second));
      
                 sharedMemory->unlock();
 
-                /* If needed again in the future ...
-
-                // Get current time as a time_point object
-                auto now = std::chrono::system_clock::now();
-
-                // Convert time_point object to time_t
-                std::time_t now_t = std::chrono::system_clock::to_time_t(now);
-
-                // Convert time_t to tm as UTC
-                std::tm* now_tm = std::gmtime(&now_t);
-
-                // Prepare output stream
-                std::ostringstream oss;
-
-                // Write time into the output stream
-                oss << std::put_time(now_tm, "%Y-%m-%dT%H:%M:%SZ");
-
-                // Get string from output stream
-                std::string utc_time = oss.str();
-
-                std::string imageMessage = "Now: " + utc_time + ";" + " ts: " + timeStamp + ";";
-
-                cv::putText(img,                     // Image to draw on
-                imageMessage,            // Text to draw
-                cv::Point(5, 50),       // Position of the text (x, y)
-                cv::FONT_HERSHEY_TRIPLEX, // Font type
-                0.5,                     // Font scale
-                cv::Scalar(255, 255, 255),   // Font color (BGR)
-                1,                       // Font thickness
-                cv::LINE_AA);            // Anti-aliasing
-
-                // Example: Draw a red rectangle and display image.
-                cv::rectangle(img, cv::Point(50, 50), cv::Point(100, 100), cv::Scalar(0,0,255));
-                */
-
-                //  Cropping
-                croppedImg = img(cv::Rect(0, 255, 640, 144));
-
                 //  Blurring
                 cv::GaussianBlur(croppedImg, blurredCroppedImg, cv::Size(101, 101), 2.5);
-
-                // Create matrix for storing blurred image copy
-                cv::Mat hsvImage;
-                // Copy blurred image into new matrix
-                blurredCroppedImg.copyTo(hsvImage);
+                
                 // Convert the copied image into hsv color space
-                cv::cvtColor(hsvImage, hsvImage, cv::COLOR_BGR2HSV);
+                cv::cvtColor(blurredCroppedImg, hsvImage, cv::COLOR_BGR2HSV);
 
                 // Create masks isolating yellow, blue, and red hues within their respective ranges,
                 // and find contours to store outlines of cones of each color.
@@ -193,65 +209,157 @@ int32_t main(int32_t argc, char **argv) {
                 std::vector<std::vector<cv::Point>> blueContours;
                 cv::findContours(blueMask, blueContours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
 
-                // Combine images with bitwise_or
-                //cv::bitwise_or(yellowMask, blueMask, result);
-                
+                // Initialize vectors to save contours from image detection
                 std::vector<cv::Moments> muYellow(yellowContours.size());
                 std::vector<cv::Moments> muBlue(blueContours.size());
-
-                std::vector<cv::Point2f> mcYellow(yellowContours.size());
-                std::vector<cv::Point2f> mcBlue(blueContours.size());
 
                 // Print timestamp
                 std::string messageTimeStamp = + "ts: " + timeStamp + ";";
                 cv::putText(blurredCroppedImg, messageTimeStamp, cv::Point2f(5,10), cv::FONT_HERSHEY_SIMPLEX, 0.2, cv::Scalar(255, 255, 255), 1);
                 
+                /****************** OBJECT DETECTION **********************************************/
                 int detection_threshold = 10;
                 
+                // Detect yellow cones
                 int max_yellow_contour_area = 0;
                 int index_yellow = -1;
                 for (int i = 0; i < yellowContours.size(); i++) {
                     cv::Rect bounding_rect_yellow = cv::boundingRect(yellowContours[i]);
                     int area = bounding_rect_yellow.width * bounding_rect_yellow.height;
+                    // Find maximum area contour
                     if (area > max_yellow_contour_area) {
                         max_yellow_contour_area = area;
                         index_yellow = i;
                     }
                 }
 
+                // Detect blue cones
                 int max_blue_contour_area = 0;
                 int index_blue = -1;
                 for (int i = 0; i < blueContours.size(); i++) {
                     cv::Rect bounding_rect_blue = cv::boundingRect(blueContours[i]);
                     int area = bounding_rect_blue.width * bounding_rect_blue.height;
+                    // Find maximum area contour
                     if (area > max_blue_contour_area) {
                         max_blue_contour_area = area;
                         index_blue = i;
                     }
                 }
 
+                // Assign midpoint to contour rect
                 if (index_yellow != -1) {
-                    processContour(yellowContours[index_yellow], max_yellow_contour_area, blurredCroppedImg, cv::Scalar(0, 255, 255), detection_threshold);
-                }
-                if (index_blue != -1) {
-                    processContour(blueContours[index_blue], max_blue_contour_area, blurredCroppedImg, cv::Scalar(255, 0, 0), detection_threshold);
+                    // Set yellowCone detection flag to 1
+                    yellowCone = 1;
+                    // Save midpoint of yellow cone contour
+                    midYellow = processContour(yellowContours[index_yellow], blurredCroppedImg, cv::Scalar(0, 255, 255), detection_threshold);
                 }
 
+                // Assign midpoint to contour rect
+                if (index_blue != -1) {
+                    // Set blueCone detection flag to 1
+                    blueCone = 1;
+                    // Save midpoint of blue cone contour
+                    midBlue = processContour(blueContours[index_blue], blurredCroppedImg, cv::Scalar(255, 0, 0), detection_threshold);
+                }
+
+                /****************** STEERING CALCULATION **********************************************/
+                // Calculate steering angle (not optimized)
+                if (blueCone && yellowCone) {
+                    // check CW or CCW
+                    if(midBlue.x/midBlue.y < midYellow.x/midYellow.y){
+                        CW++;
+                    }
+                }
+
+                // Appling steering function to angular velocity Z sensor reading
+                steeringWheelAngle = steering_function(angularVelocityZ);
+                
+                
+                // Apply offsets - based on trends observed from image analysis
+                if(CW<0){
+                    // Case: CCW
+                    if(midBlue.x<500){
+                        steeringWheelAngle = steeringWheelAngle + 0.05;
+                    }
+                    if(midYellow.x>125){
+                        steeringWheelAngle = steeringWheelAngle - 0.05;
+                    }else{
+                        steeringWheelAngle = steeringWheelAngle + 0.05;
+                    }
+                }else{
+                    // Case: CW
+                    if(midBlue.x>200){
+                        steeringWheelAngle = steeringWheelAngle - 0.05;
+                    }
+                    if(midYellow.x<500){
+                        steeringWheelAngle = steeringWheelAngle + 0.05;
+                    }
+                }
+
+                // Use multiplier at close distances
+                if(distanceUS<0.2){
+                    steeringWheelAngle = 1.2*steeringWheelAngle;
+                }
+                
+                // Apply thresholds to steer hard left and hard right
+                if (steeringWheelAngle > 0.155f) {
+                    steeringWheelAngle = 0.22f;
+                } else if (steeringWheelAngle < -0.15f) {
+                    steeringWheelAngle = -0.22f;
+                }
+
+                /************** COMPARE TO ACTUAL VALUE OF STEERING ANGLE *******************************/
+                // Check the value of steering angle
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
                     std::lock_guard<std::mutex> lck(gsrMutex);
-                    std::string actualGroundSteering = std::to_string(gsr.groundSteering());
-                    //std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
-                    std::cout << "group_21;" << timeStamp << ";" << calculatedSteeringAngle << ";" << actualGroundSteering << ";Percentage Difference: " << calculatePercentageDifference(calculatedSteeringAngle,actualGroundSteering) <<  std::endl;
-                    writeDataEntry(filename, timeStamp, calculatedSteeringAngle, actualGroundSteering);
+                    actual_steering = gsr.groundSteering();
+                    std::cout << "group_21;" << timeStamp << ";" << steeringWheelAngle << std::endl;
                 }
+                
+                // Check if there was 0 steering
+                if (abs(actual_steering) < 0.0001f) {
+                    // There is 0 steering, so we do not count these frames!!
+                } else {
+                    // Increment counter for steering frames (denominator of percentage calculation)
+                    totalFrames++;
+                    
+                    // Calculate error
+                    error = abs(steeringWheelAngle - actual_steering);
+
+                    // We wish to be within 25 percent of the actual steering angle (ground truth)
+                    if (abs(error) <= abs(0.25f * actual_steering)) {
+                        // Error is within 25 percent -- great!!
+                        totalCorrect++; // increment total correct
+                    }
+                    
+                    // Display on image which direction algorithm steers
+                    if (steeringWheelAngle > 0) {
+                        cv::putText(blurredCroppedImg, "LEFT", cv::Point2f(5, 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+                    } else if (steeringWheelAngle < 0) {
+                        cv::putText(blurredCroppedImg, "RIGHT", cv::Point2f(5, 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+                    }
+                    
+                    // Print percent correct
+                    percentCorrect = (static_cast<float>(totalCorrect) / totalFrames * 100.0f);
+                    //std::cout << "Steering Frames: " << totalFrames << " Correct: "<< percentCorrect << "%" << std::endl;
+                    //std::cout << steeringWheelAngle << "," << actual_steering << std::endl;
+                }
+
+                //writeDataEntry(filename, timeStamp, steeringWheelAngleAngle, actual_steering);
+                
+                /****************************************************************************************/
+                
+
+                // Reset global variables before next frame
+                blueCone = 0;   // reset flag for blueCone found
+                yellowCone = 0; // reset flag for yellowCone found
+                error = 0.0;    // reset error
 
                 // Display image on your screen.
                 if (VERBOSE) {
                     //cv::imshow(sharedMemory->name().c_str(), img);
-                    //cv::imshow("yellow mask", yellowMask);
-                    //cv::imshow("blue mask", blueMask);
-                    cv::imshow("cropped blurred image", blurredCroppedImg);
+                    cv::imshow("SteeringView - Group_21 Microservice", blurredCroppedImg);
                     cv::waitKey(1);
                 }
             }
@@ -261,45 +369,39 @@ int32_t main(int32_t argc, char **argv) {
     return retCode;
 }
 
-void processContour(const std::vector<cv::Point>& contour, int area, cv::Mat& image, const cv::Scalar& color, int detection_threshold) {
+
+// Define the steering function from curve fitting
+double steering_function(double X) {
+    // Coefficients
+    double a = 0.14973124;  // approximately half of steering range
+    double b = 0.02949003;  // scaling factor for angular velocity Z
+    double c = -0.00177955; // this can even be zero!
+
+    // Calculate and return the result
+    return a * std::atan(b * X) + c;
+}
+
+// Function to process contours -- finds midpoint and draws box around cone
+cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold) {
     cv::Rect bounding_rect = cv::boundingRect(contour);
+    int area = bounding_rect.width * bounding_rect.height;
+    cv::Point2f mc(-1, -1); // Initialize with invalid value
     if (area > detection_threshold) {
         cv::rectangle(image, bounding_rect, color, 1);
         cv::Moments mu = cv::moments(contour);
         if (mu.m00 != 0) {
-            cv::Point2f mc = cv::Point2f(static_cast<float>(mu.m10 / mu.m00), static_cast<float>(mu.m01 / mu.m00));
+            mc = cv::Point2f(static_cast<float>(mu.m10 / mu.m00), static_cast<float>(mu.m01 / mu.m00));
             cv::circle(image, mc, 2, color, -1);
             std::ostringstream coords;
             coords << "x: " << mc.x << ", y: " << mc.y;
             cv::putText(image, coords.str(), cv::Point2f(mc.x + 5, 50), cv::FONT_HERSHEY_SIMPLEX, 0.3, color, 1);
         }
     }
+    // returns center x,y coordinate of contour rect
+    return mc;
 }
 
-float generateRandomSteeringAngle() {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_real_distribution<> distr(-0.22, 0.22); // Random number between -0.22 and +0.22
-    return static_cast<float>(distr(gen));
-}
-
-// Function below generated by LLM*
-std::string calculatePercentageDifference(const std::string& calculatedStr, const std::string& actualStr) {
-    double calculated = std::stod(calculatedStr);
-    double actual = std::stod(actualStr);
-
-    if (actual == 0) {
-        return (calculated == 0) ? "0.0%" : "Undefined";  // Handle division by zero
-    }
-
-    double difference = ((calculated - actual) / actual) * 100.0;
-
-    // Format the result to a string with a percentage sign
-    std::ostringstream oss;
-    oss << std::fixed << std::setprecision(1) << difference << '%';
-    return oss.str();
-}
-
+/*
 std::string padMicroseconds(const std::string& timeStamp) { // Note: this function is specifically for fixing truncation in MICROSECONDS ONLY
     int requiredLength = 6;
     int currentLength = timeStamp.length();
@@ -313,15 +415,16 @@ std::string padMicroseconds(const std::string& timeStamp) { // Note: this functi
 
 // Function that is called every frame to write the plotting data
 // Note: This function requires that the necessary file creation and cleanup is done at the beginning of main
-void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &calculatedSteeringAngle, const std::string &actualGroundSteering) {
+void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &steeringWheelAngleAngle, const std::string &actual_steering) {
     std::ofstream file;
     file.open(filename, std::ios_base::app); // opens data file
 
     if(file.is_open()) {
         // Writes data to file
-        file << timeStamp << "," << calculatedSteeringAngle << "," << actualGroundSteering << "\n";
+        file << timeStamp << "," << steeringWheelAngleAngle << "," << actual_steering << "\n";
         file.close(); // Closes file
     } else {
         std::cout << "Failed to open data file: " << filename << std::endl;
     }
 }
+*/
