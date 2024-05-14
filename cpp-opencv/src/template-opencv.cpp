@@ -87,9 +87,10 @@ void writeDataEntry(std::ofstream& file, const std::string& timeStamp, const std
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
 
+    // Write data to CSV file for data analysis (disabled by default)
     std::ofstream file;
     file.open(filename, std::ios_base::app); // Opens data file in append mode
-
+    // Handle errors with file opening
     if (!file.is_open()) {
         std::cout << "Failed to open data file: " << filename << std::endl;
         return 1; // Return error code
@@ -349,10 +350,10 @@ int32_t main(int32_t argc, char **argv) {
                     //std::cout << steeringWheelAngle << "," << actual_steering << std::endl;
                 }
 
+                
+                // Write to file for data analysis (disabled by default)
                 writeDataEntry(file, timeStamp, std::to_string(steeringWheelAngle), std::to_string(actual_steering));
-                
-                /****************************************************************************************/
-                
+                             
 
                 // Reset global variables before next frame
                 blueCone = 0;   // reset flag for blueCone found
