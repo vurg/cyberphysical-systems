@@ -82,13 +82,11 @@ cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image
 
 // Utilities (mainly for testing)
 std::string filename = "/tmp/plotting_data.csv";
-std::string padMicroseconds(const std::string& timeStamp);
 void writeDataEntry(std::ofstream& file, const std::string& timeStamp, const std::string& steeringWheelAngle, const std::string& actual_steering);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
 
-    // Establish writing of data to file
     std::ofstream file;
     file.open(filename, std::ios_base::app); // Opens data file in append mode
 
@@ -139,8 +137,6 @@ int32_t main(int32_t argc, char **argv) {
                 //CHANGE HERE
                 gsr = cluon::extractMessage<opendlv::proxy::GroundSteeringRequest>(std::move(env));
                 //std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
-
-                timeStamp = std::to_string(env.sampleTimeStamp().seconds()) + padMicroseconds(std::to_string(env.sampleTimeStamp().microseconds()));
             };
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
@@ -191,6 +187,10 @@ int32_t main(int32_t argc, char **argv) {
                     // Crop image here
                     croppedImg = wrapped(roi).clone();
                 }
+                // Get the time for each image
+                std::pair<bool, cluon::data::TimeStamp> tStamp = sharedMemory->getTimeStamp();
+                // Convert the time to microseconds
+                std::string timeStamp = std::to_string(cluon::time::toMicroseconds(tStamp.second));
      
                 sharedMemory->unlock();
 
@@ -405,18 +405,6 @@ cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image
     }
     // returns center x,y coordinate of contour rect
     return mc;
-}
-
-// This method is to make sure the timestamp appears properly when parsing the envelope
-std::string padMicroseconds(const std::string& timeStamp) { // Note: this function is specifically for fixing truncation in MICROSECONDS ONLY
-    int requiredLength = 6;
-    int currentLength = timeStamp.length();
-    if (currentLength < requiredLength) { // If the timestamp is shorter than it should be
-        int zerosToAdd = requiredLength - currentLength; // Figure out how many zeros need to be added
-        std::string padding(zerosToAdd, '0');
-        return padding + timeStamp; // Add padding BEFORE the timestamp
-    }
-    return timeStamp; // If the timestamp is already 6 characters, just return it as normal
 }
 
 // Function that is called every frame to write the plotting data
