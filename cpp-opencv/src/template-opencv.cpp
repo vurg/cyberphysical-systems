@@ -35,7 +35,7 @@
 #include <fstream>  // Library for writing plotting data to a data file (CSV)
 #include <string>   // For strings
 #include <cmath>    // For std::abs, math
-#include <sstream>  // For std::ostringstream
+#include <iostream>  // For std::ostringstream
 
 // GLOBAL VARIABLES:
 // OpenCV data structure to hold an image.
@@ -81,16 +81,20 @@ double steering_function(double X); // Steering Function
 cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold);
 
 // Utilities (mainly for testing)
-//std::string padMicroseconds(const std::string& timeStamp);
-//void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &steeringWheelAngleAngle, const std::string &actual_steering);
+std::string filename = "/tmp/plotting_data.csv";
+void writeDataEntry(std::ofstream& file, const std::string& timeStamp, const std::string& steeringWheelAngle, const std::string& actual_steering);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
 
-    // Write to file (disabled by default)
-    //std::string filename = "/tmp/plotting_data.csv";
-    //std::ofstream outFile;
-    //outFile.open(filename, std::ios::out | std::ios::trunc); // Opens and resets existing data file
+    // Write data to CSV file for data analysis (disabled by default)
+    std::ofstream file;
+    file.open(filename, std::ios_base::app); // Opens data file in append mode
+    // Handle errors with file opening
+    if (!file.is_open()) {
+        std::cout << "Failed to open data file: " << filename << std::endl;
+        return 1; // Return error code
+    }
 
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
     auto commandlineArguments = cluon::getCommandlineArguments(argc, argv);
@@ -346,10 +350,10 @@ int32_t main(int32_t argc, char **argv) {
                     //std::cout << steeringWheelAngle << "," << actual_steering << std::endl;
                 }
 
-                //writeDataEntry(filename, timeStamp, steeringWheelAngleAngle, actual_steering);
                 
-                /****************************************************************************************/
-                
+                // Write to file for data analysis (disabled by default)
+                writeDataEntry(file, timeStamp, std::to_string(steeringWheelAngle), std::to_string(actual_steering));
+                             
 
                 // Reset global variables before next frame
                 blueCone = 0;   // reset flag for blueCone found
@@ -366,6 +370,9 @@ int32_t main(int32_t argc, char **argv) {
         }
         retCode = 0;
     }
+    // Close the file when done
+    file.close();
+
     return retCode;
 }
 
@@ -401,30 +408,8 @@ cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image
     return mc;
 }
 
-/*
-std::string padMicroseconds(const std::string& timeStamp) { // Note: this function is specifically for fixing truncation in MICROSECONDS ONLY
-    int requiredLength = 6;
-    int currentLength = timeStamp.length();
-    if (currentLength < requiredLength) { // If the timestamp is shorter than it should be
-        int zerosToAdd = requiredLength - currentLength; // Figure out how many zeros need to be added
-        std::string padding(zerosToAdd, '0');
-        return padding + timeStamp; // Add padding BEFORE the timestamp
-    }
-    return timeStamp; // If the timestamp is already 6 characters, just return it as normal
-}
-
 // Function that is called every frame to write the plotting data
-// Note: This function requires that the necessary file creation and cleanup is done at the beginning of main
-void writeDataEntry(const std::string &filename, const std::string &timeStamp, const std::string &steeringWheelAngleAngle, const std::string &actual_steering) {
-    std::ofstream file;
-    file.open(filename, std::ios_base::app); // opens data file
-
-    if(file.is_open()) {
-        // Writes data to file
-        file << timeStamp << "," << steeringWheelAngleAngle << "," << actual_steering << "\n";
-        file.close(); // Closes file
-    } else {
-        std::cout << "Failed to open data file: " << filename << std::endl;
-    }
+void writeDataEntry(std::ofstream& file, const std::string& timeStamp, const std::string& steeringWheelAngle, const std::string& actual_steering) {
+    // Writes data to file
+    file << timeStamp << "," << steeringWheelAngle << "," << actual_steering << "\n";
 }
-*/
