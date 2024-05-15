@@ -37,6 +37,12 @@
 #include <cmath>    // For std::abs, math
 #include <iostream> // For std::ostringstream
 
+// Preprocessor directives - define production or test mode - in test mode, it writes steering data to a csv file in /tmp/ folder
+#define PRODUCTION
+#ifndef PRODUCTION
+#define TEST
+#endif
+
 // GLOBAL VARIABLES:
 // OpenCV data structure to hold an image.
 cv::Mat croppedImg, blurredCroppedImg, hsvImage;
@@ -80,14 +86,17 @@ double percentCorrect = 0.0; // % of frames within 25% of actual steering value
 double steering_function(double X); // Steering Function
 cv::Point processContour(const std::vector<cv::Point> &contour, cv::Mat &image, const cv::Scalar &color, int detection_threshold);
 
+#ifdef TEST
 // Utilities (mainly for testing)
 std::string filename = "/tmp/plotting_data.csv";
 void writeDataEntry(std::ofstream &file, const std::string &ts, const std::string &calculatedValue, const std::string &actualValue);
+#endif
 
 int32_t main(int32_t argc, char **argv)
 {
     int32_t retCode{1};
 
+#ifdef TEST
     // Write data to CSV file for data analysis (disabled by default)
     std::ofstream file;
     file.open(filename, std::ios_base::app); // Opens data file in append mode
@@ -97,6 +106,7 @@ int32_t main(int32_t argc, char **argv)
         std::cout << "Failed to open data file: " << filename << std::endl;
         return 1; // Return error code
     }
+#endif
 
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
     auto commandlineArguments = cluon::getCommandlineArguments(argc, argv);
@@ -382,8 +392,10 @@ int32_t main(int32_t argc, char **argv)
                     // std::cout << steeringWheelAngle << "," << actual_steering << std::endl;
                 }
 
+#ifdef TEST
                 // Write to file for data analysis (disabled by default)
                 writeDataEntry(file, timeStamp, std::to_string(steeringWheelAngle), std::to_string(actual_steering));
+#endif
 
                 // Reset global variables before next frame
                 blueCone = 0;   // reset flag for blueCone found
@@ -401,8 +413,10 @@ int32_t main(int32_t argc, char **argv)
         }
         retCode = 0;
     }
+#ifdef TEST
     // Close the file when done
     file.close();
+#endif
 
     return retCode;
 }
@@ -443,9 +457,11 @@ cv::Point processContour(const std::vector<cv::Point> &contour, cv::Mat &image, 
     return cv::Point(-1, -1);
 }
 
+#ifdef TEST
 // Function that is called every frame to write the plotting data
 void writeDataEntry(std::ofstream &file, const std::string &ts, const std::string &calculatedValue, const std::string &actualValue)
 {
     // Writes data to file
     file << ts << "," << calculatedValue << "," << actualValue << "\n";
 }
+#endif
