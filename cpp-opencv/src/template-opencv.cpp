@@ -392,20 +392,22 @@ double steering_function(double X) {
 cv::Point processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold) {
     cv::Rect bounding_rect = cv::boundingRect(contour);
     int area = bounding_rect.width * bounding_rect.height;
-    cv::Point mc(-1, -1); // Initialize with invalid value
     if (area > detection_threshold) {
+        // Create bounding rectangle
         cv::rectangle(image, bounding_rect, color, 1);
-        cv::Moments mu = cv::moments(contour);
-        //if (abs(mu.m00) > 0.0001) {
-            mc = cv::Point((mu.m10 / mu.m00), (mu.m01 / mu.m00));
-            cv::circle(image, mc, 2, color, -1);
-            std::ostringstream coords;
-            coords << "x: " << mc.x << ", y: " << mc.y;
-            cv::putText(image, coords.str(), cv::Point(mc.x + 5, 50), cv::FONT_HERSHEY_SIMPLEX, 0.3, color, 1);
-        //}
+        // Find midpoint of rectangle
+        cv::Point midpoint(bounding_rect.x + bounding_rect.width / 2, bounding_rect.y + bounding_rect.height / 2);
+        // Draw midpoint
+        cv::circle(image, midpoint, 2, color, -1);
+        // Put coordinates as text on display image
+        std::ostringstream coords;
+        coords << "x: " << midpoint.x << ", y: " << midpoint.y;
+        cv::putText(image, coords.str(), cv::Point(midpoint.x + 5, 50), cv::FONT_HERSHEY_SIMPLEX, 0.3, color, 1);
+        // returns center x,y coordinate of contour rect
+        return midpoint;
     }
-    // returns center x,y coordinate of contour rect
-    return mc;
+    // Return an invalid point if area is less than detection threshold
+    return cv::Point(-1, -1);
 }
 
 // Function that is called every frame to write the plotting data
