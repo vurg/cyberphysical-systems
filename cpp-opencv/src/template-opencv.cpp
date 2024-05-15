@@ -2,7 +2,7 @@
  * Authors: Nasit Vurgun, Sam Hardingham, Kai Rowley, Daniel van den Heuvel
  * Institution: University of Gothenburg, Sweden
  * Course: DIT638/DIT639 (2024), taught by Prof. Christian Berger
- * 
+ *
  * Template Code provided by:
  * Copyright (C) 2020  Christian Berger
  *
@@ -22,7 +22,7 @@
 
 // Include the single-file, header-only middleware libcluon to create high-performance microservices
 #include "cluon-complete.hpp"
-// Include the OpenDLV Standard Message Set that contains messages that are usually exchanged for automotive or robotic applications 
+// Include the OpenDLV Standard Message Set that contains messages that are usually exchanged for automotive or robotic applications
 #include "opendlv-standard-message-set.hpp"
 
 // Include the GUI and image processing header files from OpenCV
@@ -35,7 +35,13 @@
 #include <fstream>  // Library for writing plotting data to a data file (CSV)
 #include <string>   // For strings
 #include <cmath>    // For std::abs, math
-#include <iostream>  // For std::ostringstream
+#include <iostream> // For std::ostringstream
+
+// Preprocessor directives - define production or test mode - in test mode, it writes steering data to a csv file in /tmp/ folder
+#define PRODUCTION
+#ifndef PRODUCTION
+#define TEST
+#endif
 
 // GLOBAL VARIABLES:
 // OpenCV data structure to hold an image.
@@ -52,56 +58,63 @@ cv::Scalar blueMin = cv::Scalar(100, 50, 30);
 cv::Scalar blueMax = cv::Scalar(120, 255, 253);
 
 // Sensor variables
-float distanceUS = 0.0;         // Ultrasound sensor reading
-float angularVelocityZ = 0.0;   // Angular velocity Z sensor reading
+double distanceUS = 0.0;       // Ultrasound sensor reading
+double angularVelocityZ = 0.0; // Angular velocity Z sensor reading
 
 // Object Detection Variables
-int yellowCone = 0;             // yellow cone found
-int blueCone = 0;               // blue cone found
+int yellowCone = 0; // yellow cone found
+int blueCone = 0;   // blue cone found
 
 // Steering Wheel Angle Related Variables
-float steeringWheelAngle = 0.0; // calculated steering wheel angle
-float actual_steering = 0.0;    // ground truth
-float error = 0.0;              // absolute error
+double steeringWheelAngle = 0.0; // calculated steering wheel angle
+double actual_steering = 0.0;    // ground truth
+double error = 0.0;              // absolute error
 
 // Clockwise vs Counterclockwise counter
-int CW = 0;                     // positive if clockwise
+int CW = 0; // positive if clockwise
 
 // Position of Cones - used in Steering Calculation
-cv::Point2f midYellow(0.0, 0.0);   // center of rect containing yellow cone
-cv::Point2f midBlue(0.0, 0.0);     // center of rect containing blue cone
+cv::Point midYellow(0, 0); // center of rect containing yellow cone
+cv::Point midBlue(0, 0);   // center of rect containing blue cone
 
 // Comparing Calculated Steering Wheel Angle with Ground Truth
-int totalFrames = 0;            // number of non-zero steering frames
-int totalCorrect = 0;           // number of correct steering frames
-float percentCorrect = 0.0;     // % of frames within 25% of actual steering value
+int totalFrames = 0;         // number of non-zero steering frames
+int totalCorrect = 0;        // number of correct steering frames
+double percentCorrect = 0.0; // % of frames within 25% of actual steering value
 
 // Function declarations
 double steering_function(double X); // Steering Function
-cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold);
+cv::Point processContour(const std::vector<cv::Point> &contour, cv::Mat &image, const cv::Scalar &color, int detection_threshold);
 
+#ifdef TEST
 // Utilities (mainly for testing)
 std::string filename = "/tmp/plotting_data.csv";
-void writeDataEntry(std::ofstream& file, const std::string& timeStamp, const std::string& steeringWheelAngle, const std::string& actual_steering);
+void writeDataEntry(std::ofstream &file, const std::string &ts, const std::string &calculatedValue, const std::string &actualValue);
+#endif
 
-int32_t main(int32_t argc, char **argv) {
+int32_t main(int32_t argc, char **argv)
+{
     int32_t retCode{1};
 
+#ifdef TEST
     // Write data to CSV file for data analysis (disabled by default)
     std::ofstream file;
     file.open(filename, std::ios_base::app); // Opens data file in append mode
     // Handle errors with file opening
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         std::cout << "Failed to open data file: " << filename << std::endl;
         return 1; // Return error code
     }
+#endif
 
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
     auto commandlineArguments = cluon::getCommandlineArguments(argc, argv);
-    if ( (0 == commandlineArguments.count("cid")) ||
-         (0 == commandlineArguments.count("name")) ||
-         (0 == commandlineArguments.count("width")) ||
-         (0 == commandlineArguments.count("height")) ) {
+    if ((0 == commandlineArguments.count("cid")) ||
+        (0 == commandlineArguments.count("name")) ||
+        (0 == commandlineArguments.count("width")) ||
+        (0 == commandlineArguments.count("height")))
+    {
         std::cerr << argv[0] << " attaches to a shared memory area containing an ARGB image." << std::endl;
         std::cerr << "Usage:   " << argv[0] << " --cid=<OD4 session> --name=<name of shared memory area> [--verbose]" << std::endl;
         std::cerr << "         --cid:    CID of the OD4Session to send and receive messages" << std::endl;
@@ -110,7 +123,8 @@ int32_t main(int32_t argc, char **argv) {
         std::cerr << "         --height: height of the frame" << std::endl;
         std::cerr << "Example: " << argv[0] << " --cid=253 --name=img --width=640 --height=480 --verbose" << std::endl;
     }
-    else {
+    else
+    {
         // Extract the values from the command line parameters
         const std::string NAME{commandlineArguments["name"]};
         const uint32_t WIDTH{static_cast<uint32_t>(std::stoi(commandlineArguments["width"]))};
@@ -119,7 +133,8 @@ int32_t main(int32_t argc, char **argv) {
 
         // Attach to the shared memory.
         std::unique_ptr<cluon::SharedMemory> sharedMemory{new cluon::SharedMemory{NAME}};
-        if (sharedMemory && sharedMemory->valid()) {
+        if (sharedMemory && sharedMemory->valid())
+        {
             std::clog << argv[0] << ": Attached to shared memory '" << sharedMemory->name() << " (" << sharedMemory->size() << " bytes)." << std::endl;
 
             // Interface to a running OpenDaVINCI session where network messages are exchanged.
@@ -128,16 +143,17 @@ int32_t main(int32_t argc, char **argv) {
 
             opendlv::proxy::GroundSteeringRequest gsr;
             std::mutex gsrMutex;
-            std::string timeStamp;
-            auto onGroundSteeringRequest = [&gsr, &gsrMutex, &timeStamp](cluon::data::Envelope &&env){
+            std::string timeStampGSR;
+            auto onGroundSteeringRequest = [&gsr, &gsrMutex, &timeStampGSR](cluon::data::Envelope &&env)
+            {
                 // The envelope data structure provide further details, such as sampleTimePoint as shown in this test case:
                 // https://github.com/chrberger/libcluon/blob/master/libcluon/testsuites/TestEnvelopeConverter.cpp#L31-L40
                 std::lock_guard<std::mutex> lck(gsrMutex);
-                
-                //locks twice, to get image, to get data
-                //CHANGE HERE
+
+                // locks twice, to get image, to get data
+                // CHANGE HERE
                 gsr = cluon::extractMessage<opendlv::proxy::GroundSteeringRequest>(std::move(env));
-                //std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
+                // std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
             };
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
@@ -146,7 +162,7 @@ int32_t main(int32_t argc, char **argv) {
             opendlv::proxy::DistanceReading ultrasound;
             std::mutex ultrasoundMutex;
             std::string timeStampUS;
-            auto onDistanceReading = [&ultrasound, &ultrasoundMutex, &distanceUS, &timeStampUS](cluon::data::Envelope &&env)
+            auto onDistanceReading = [&ultrasound, &ultrasoundMutex, &timeStampUS](cluon::data::Envelope &&env)
             {
                 std::lock_guard<std::mutex> lck(ultrasoundMutex);
                 ultrasound = cluon::extractMessage<opendlv::proxy::DistanceReading>(std::move(env));
@@ -162,19 +178,18 @@ int32_t main(int32_t argc, char **argv) {
             opendlv::proxy::AngularVelocityReading angularVelocity;
             std::mutex angularMutex;
             std::string timeStampAngularVelocity;
-            auto onAngularVelocityReading = [&angularVelocity, &angularMutex, &angularVelocityZ, &timeStampAngularVelocity](cluon::data::Envelope &&env)
+            auto onAngularVelocityReading = [&angularVelocity, &angularMutex, &timeStampAngularVelocity](cluon::data::Envelope &&env)
             {
                 std::lock_guard<std::mutex> lck(angularMutex);
                 angularVelocity = cluon::extractMessage<opendlv::proxy::AngularVelocityReading>(std::move(env));
-                    angularVelocityZ = angularVelocity.angularVelocityZ();
-                
+                angularVelocityZ = angularVelocity.angularVelocityZ();
             };
 
             od4.dataTrigger(opendlv::proxy::AngularVelocityReading::ID(), onAngularVelocityReading);
-            
 
             // Endless loop; end the program by pressing Ctrl-C.
-            while (od4.isRunning()) {
+            while (od4.isRunning())
+            {
 
                 // Wait for a notification of a new frame.
                 sharedMemory->wait();
@@ -184,7 +199,7 @@ int32_t main(int32_t argc, char **argv) {
                 {
                     // Copy the pixels from the shared memory into our own data structure.
                     cv::Mat wrapped(HEIGHT, WIDTH, CV_8UC4, sharedMemory->data());
-                    
+
                     // Crop image here
                     croppedImg = wrapped(roi).clone();
                 }
@@ -192,12 +207,12 @@ int32_t main(int32_t argc, char **argv) {
                 std::pair<bool, cluon::data::TimeStamp> tStamp = sharedMemory->getTimeStamp();
                 // Convert the time to microseconds
                 std::string timeStamp = std::to_string(cluon::time::toMicroseconds(tStamp.second));
-     
+
                 sharedMemory->unlock();
 
                 //  Blurring
                 cv::GaussianBlur(croppedImg, blurredCroppedImg, cv::Size(101, 101), 2.5);
-                
+
                 // Convert the copied image into hsv color space
                 cv::cvtColor(blurredCroppedImg, hsvImage, cv::COLOR_BGR2HSV);
 
@@ -218,20 +233,22 @@ int32_t main(int32_t argc, char **argv) {
                 std::vector<cv::Moments> muBlue(blueContours.size());
 
                 // Print timestamp
-                std::string messageTimeStamp = + "ts: " + timeStamp + ";";
-                cv::putText(blurredCroppedImg, messageTimeStamp, cv::Point2f(5,10), cv::FONT_HERSHEY_SIMPLEX, 0.2, cv::Scalar(255, 255, 255), 1);
-                
+                std::string messageTimeStamp = +"ts: " + timeStamp + ";";
+                cv::putText(blurredCroppedImg, messageTimeStamp, cv::Point(5, 10), cv::FONT_HERSHEY_SIMPLEX, 0.2, cv::Scalar(255, 255, 255), 1);
+
                 /****************** OBJECT DETECTION **********************************************/
                 int detection_threshold = 10;
-                
+
                 // Detect yellow cones
                 int max_yellow_contour_area = 0;
                 int index_yellow = -1;
-                for (int i = 0; i < yellowContours.size(); i++) {
+                for (size_t i = 0; i < yellowContours.size(); i++)
+                {
                     cv::Rect bounding_rect_yellow = cv::boundingRect(yellowContours[i]);
                     int area = bounding_rect_yellow.width * bounding_rect_yellow.height;
                     // Find maximum area contour
-                    if (area > max_yellow_contour_area) {
+                    if (area > max_yellow_contour_area)
+                    {
                         max_yellow_contour_area = area;
                         index_yellow = i;
                     }
@@ -240,18 +257,21 @@ int32_t main(int32_t argc, char **argv) {
                 // Detect blue cones
                 int max_blue_contour_area = 0;
                 int index_blue = -1;
-                for (int i = 0; i < blueContours.size(); i++) {
+                for (size_t i = 0; i < blueContours.size(); i++)
+                {
                     cv::Rect bounding_rect_blue = cv::boundingRect(blueContours[i]);
                     int area = bounding_rect_blue.width * bounding_rect_blue.height;
                     // Find maximum area contour
-                    if (area > max_blue_contour_area) {
+                    if (area > max_blue_contour_area)
+                    {
                         max_blue_contour_area = area;
                         index_blue = i;
                     }
                 }
 
                 // Assign midpoint to contour rect
-                if (index_yellow != -1) {
+                if (index_yellow != -1)
+                {
                     // Set yellowCone detection flag to 1
                     yellowCone = 1;
                     // Save midpoint of yellow cone contour
@@ -259,7 +279,8 @@ int32_t main(int32_t argc, char **argv) {
                 }
 
                 // Assign midpoint to contour rect
-                if (index_blue != -1) {
+                if (index_blue != -1)
+                {
                     // Set blueCone detection flag to 1
                     blueCone = 1;
                     // Save midpoint of blue cone contour
@@ -268,48 +289,62 @@ int32_t main(int32_t argc, char **argv) {
 
                 /****************** STEERING CALCULATION **********************************************/
                 // Calculate steering angle (not optimized)
-                if (blueCone && yellowCone) {
+                if (blueCone && yellowCone)
+                {
                     // check CW or CCW
-                    if(midBlue.x/midBlue.y < midYellow.x/midYellow.y){
+                    if (midBlue.x / midBlue.y < midYellow.x / midYellow.y)
+                    {
                         CW++;
                     }
                 }
 
                 // Appling steering function to angular velocity Z sensor reading
                 steeringWheelAngle = steering_function(angularVelocityZ);
-                
-                
+
                 // Apply offsets - based on trends observed from image analysis
-                if(CW<0){
+                if (CW < 0)
+                {
                     // Case: CCW
-                    if(midBlue.x<500){
+                    if (midBlue.x < 500)
+                    {
                         steeringWheelAngle = steeringWheelAngle + 0.05;
                     }
-                    if(midYellow.x>125){
+                    if (midYellow.x > 125)
+                    {
                         steeringWheelAngle = steeringWheelAngle - 0.05;
-                    }else{
+                    }
+                    else
+                    {
                         steeringWheelAngle = steeringWheelAngle + 0.05;
                     }
-                }else{
+                }
+                else
+                {
                     // Case: CW
-                    if(midBlue.x>200){
+                    if (midBlue.x > 200)
+                    {
                         steeringWheelAngle = steeringWheelAngle - 0.05;
                     }
-                    if(midYellow.x<500){
+                    if (midYellow.x < 500)
+                    {
                         steeringWheelAngle = steeringWheelAngle + 0.05;
                     }
                 }
 
                 // Use multiplier at close distances
-                if(distanceUS<0.2){
-                    steeringWheelAngle = 1.2*steeringWheelAngle;
+                if (distanceUS < 0.2)
+                {
+                    steeringWheelAngle = 1.2 * steeringWheelAngle;
                 }
-                
+
                 // Apply thresholds to steer hard left and hard right
-                if (steeringWheelAngle > 0.155f) {
-                    steeringWheelAngle = 0.22f;
-                } else if (steeringWheelAngle < -0.15f) {
-                    steeringWheelAngle = -0.22f;
+                if (steeringWheelAngle > 0.155)
+                {
+                    steeringWheelAngle = 0.22;
+                }
+                else if (steeringWheelAngle < -0.15)
+                {
+                    steeringWheelAngle = -0.22;
                 }
 
                 /************** COMPARE TO ACTUAL VALUE OF STEERING ANGLE *******************************/
@@ -320,40 +355,47 @@ int32_t main(int32_t argc, char **argv) {
                     actual_steering = gsr.groundSteering();
                     std::cout << "group_21;" << timeStamp << ";" << steeringWheelAngle << std::endl;
                 }
-                
+
                 // Check if there was 0 steering
-                if (abs(actual_steering) < 0.0001f) {
+                if (abs(actual_steering) < 0.0001)
+                {
                     // There is 0 steering, so we do not count these frames!!
-                } else {
+                }
+                else
+                {
                     // Increment counter for steering frames (denominator of percentage calculation)
                     totalFrames++;
-                    
+
                     // Calculate error
                     error = abs(steeringWheelAngle - actual_steering);
 
                     // We wish to be within 25 percent of the actual steering angle (ground truth)
-                    if (abs(error) <= abs(0.25f * actual_steering)) {
+                    if (abs(error) <= abs(0.25 * actual_steering))
+                    {
                         // Error is within 25 percent -- great!!
                         totalCorrect++; // increment total correct
                     }
-                    
+
                     // Display on image which direction algorithm steers
-                    if (steeringWheelAngle > 0) {
-                        cv::putText(blurredCroppedImg, "LEFT", cv::Point2f(5, 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
-                    } else if (steeringWheelAngle < 0) {
-                        cv::putText(blurredCroppedImg, "RIGHT", cv::Point2f(5, 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+                    if (steeringWheelAngle > 0)
+                    {
+                        cv::putText(blurredCroppedImg, "LEFT", cv::Point(5, 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
                     }
-                    
+                    else if (steeringWheelAngle < 0)
+                    {
+                        cv::putText(blurredCroppedImg, "RIGHT", cv::Point(5, 40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);
+                    }
+
                     // Print percent correct
-                    percentCorrect = (static_cast<float>(totalCorrect) / totalFrames * 100.0f);
-                    //std::cout << "Steering Frames: " << totalFrames << " Correct: "<< percentCorrect << "%" << std::endl;
-                    //std::cout << steeringWheelAngle << "," << actual_steering << std::endl;
+                    percentCorrect = (static_cast<double>(totalCorrect) / totalFrames * 100.0);
+                    // std::cout << "Steering Frames: " << totalFrames << " Correct: "<< percentCorrect << "%" << std::endl;
+                    // std::cout << steeringWheelAngle << "," << actual_steering << std::endl;
                 }
 
-                
+#ifdef TEST
                 // Write to file for data analysis (disabled by default)
                 writeDataEntry(file, timeStamp, std::to_string(steeringWheelAngle), std::to_string(actual_steering));
-                             
+#endif
 
                 // Reset global variables before next frame
                 blueCone = 0;   // reset flag for blueCone found
@@ -361,8 +403,9 @@ int32_t main(int32_t argc, char **argv) {
                 error = 0.0;    // reset error
 
                 // Display image on your screen.
-                if (VERBOSE) {
-                    //cv::imshow(sharedMemory->name().c_str(), img);
+                if (VERBOSE)
+                {
+                    // cv::imshow(sharedMemory->name().c_str(), img);
                     cv::imshow("SteeringView - Group_21 Microservice", blurredCroppedImg);
                     cv::waitKey(1);
                 }
@@ -370,15 +413,17 @@ int32_t main(int32_t argc, char **argv) {
         }
         retCode = 0;
     }
+#ifdef TEST
     // Close the file when done
     file.close();
+#endif
 
     return retCode;
 }
 
-
 // Define the steering function from curve fitting
-double steering_function(double X) {
+double steering_function(double X)
+{
     // Coefficients
     double a = 0.14973124;  // approximately half of steering range
     double b = 0.02949003;  // scaling factor for angular velocity Z
@@ -389,27 +434,34 @@ double steering_function(double X) {
 }
 
 // Function to process contours -- finds midpoint and draws box around cone
-cv::Point2f processContour(const std::vector<cv::Point>& contour, cv::Mat& image, const cv::Scalar& color, int detection_threshold) {
+cv::Point processContour(const std::vector<cv::Point> &contour, cv::Mat &image, const cv::Scalar &color, int detection_threshold)
+{
     cv::Rect bounding_rect = cv::boundingRect(contour);
     int area = bounding_rect.width * bounding_rect.height;
-    cv::Point2f mc(-1, -1); // Initialize with invalid value
-    if (area > detection_threshold) {
+    if (area > detection_threshold)
+    {
+        // Create bounding rectangle
         cv::rectangle(image, bounding_rect, color, 1);
-        cv::Moments mu = cv::moments(contour);
-        if (mu.m00 != 0) {
-            mc = cv::Point2f(static_cast<float>(mu.m10 / mu.m00), static_cast<float>(mu.m01 / mu.m00));
-            cv::circle(image, mc, 2, color, -1);
-            std::ostringstream coords;
-            coords << "x: " << mc.x << ", y: " << mc.y;
-            cv::putText(image, coords.str(), cv::Point2f(mc.x + 5, 50), cv::FONT_HERSHEY_SIMPLEX, 0.3, color, 1);
-        }
+        // Find midpoint of rectangle
+        cv::Point midpoint(bounding_rect.x + bounding_rect.width / 2, bounding_rect.y + bounding_rect.height / 2);
+        // Draw midpoint
+        cv::circle(image, midpoint, 2, color, -1);
+        // Put coordinates as text on display image
+        std::ostringstream coords;
+        coords << "x: " << midpoint.x << ", y: " << midpoint.y;
+        cv::putText(image, coords.str(), cv::Point(midpoint.x + 5, 50), cv::FONT_HERSHEY_SIMPLEX, 0.3, color, 1);
+        // returns center x,y coordinate of contour rect
+        return midpoint;
     }
-    // returns center x,y coordinate of contour rect
-    return mc;
+    // Return an invalid point if area is less than detection threshold
+    return cv::Point(-1, -1);
 }
 
+#ifdef TEST
 // Function that is called every frame to write the plotting data
-void writeDataEntry(std::ofstream& file, const std::string& timeStamp, const std::string& steeringWheelAngle, const std::string& actual_steering) {
+void writeDataEntry(std::ofstream &file, const std::string &ts, const std::string &calculatedValue, const std::string &actualValue)
+{
     // Writes data to file
-    file << timeStamp << "," << steeringWheelAngle << "," << actual_steering << "\n";
+    file << ts << "," << calculatedValue << "," << actualValue << "\n";
 }
+#endif
