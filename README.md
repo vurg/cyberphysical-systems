@@ -1,4 +1,4 @@
-# Data-driven algorithm design for real-time systems:
+# Data-driven algorithm design for real-time systems
 *Coursework from Cyber Physical Systems and Systems of Systems (DIT639 Project)*.
 
 The goal of the project was to develop a steering algorithm that closely matches a human driver.
