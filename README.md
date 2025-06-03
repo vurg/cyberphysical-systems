@@ -1,14 +1,9 @@
-# Group 21
-**DIT639 Project: Cyber Physical Systems and Systems of Systems**
+# Data-driven algorithm design for real-time systems:
+*Coursework from Cyber Physical Systems and Systems of Systems (DIT639 Project)*.
 
-### Current Build Status
-[![pipeline status](https://git.chalmers.se/courses/dit638/students/2024-group-21/badges/main/pipeline.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/pipelines)
-[![coverage report](https://git.chalmers.se/courses/dit638/students/2024-group-21/badges/main/coverage.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/commits/main)
-[![Latest Release](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/badges/release.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/releases)
-
-
-## Acknowledgments
-Special thanks to @christian.berger for his contributions to the foundational libraries used in our project, including OpenDLV, libcluon, and the opencvv template file, which have been instrumental in the development of our cyber-physical systems project.
+The goal of the project was to develop a steering algorithm that closely matches a human driver.
+![Data-driven algorithm design](assets/data-driven-design.png)
+![Detected cone angles](assets/detected-cone-angles.png)
 
 ## Installation
 To install our system, complete the following steps:
@@ -101,6 +96,15 @@ Concrete Example:
 <body> Closes #50
 
 ```
+
+## Current Build Status
+[![pipeline status](https://git.chalmers.se/courses/dit638/students/2024-group-21/badges/main/pipeline.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/pipelines)
+[![coverage report](https://git.chalmers.se/courses/dit638/students/2024-group-21/badges/main/coverage.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/commits/main)
+[![Latest Release](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/badges/release.svg)](https://git.chalmers.se/courses/dit638/students/2024-group-21/-/releases)
+
+
+## Acknowledgments
+Special thanks to @christian.berger for his contributions to the foundational libraries used in our project, including OpenDLV, libcluon, and the opencvv template file, which have been instrumental in the development of our cyber-physical systems project.
 
 ## Contributers
 <table>
